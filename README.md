@@ -2,7 +2,7 @@
 
 A minimal macOS menu bar app that renders a live system stats dashboard on the **Corsair Xeneon Edge** touch display, treating it as a standard secondary monitor.
 
-![SystemPulse](SystemPulse.icns)
+![SystemPulse](screenshot.png)
 
 ## Features
 
