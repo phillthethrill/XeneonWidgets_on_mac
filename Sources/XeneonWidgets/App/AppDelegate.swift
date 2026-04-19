@@ -7,11 +7,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var isVisible = true
     private var toggleItem: NSMenuItem?
     private let statsProvider = SystemStatsProvider()
+    private let ragStatus = RAGStatusProvider()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         setupStatusItem()
         statsProvider.startPolling()
+        ragStatus.startPolling()
         openWindowIfNeeded()
         NotificationCenter.default.addObserver(
             self,
@@ -90,7 +92,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func openWindowIfNeeded() {
         guard let screen = DisplayManager.xeneonScreen else { return }
-        let content = WidgetContainerView(stats: statsProvider)
+        let content = WidgetContainerView(stats: statsProvider, ragStatus: ragStatus)
         widgetWindow = WidgetWindow(screen: screen, contentView: content)
         widgetWindow?.orderFront(nil)
         isVisible = true
