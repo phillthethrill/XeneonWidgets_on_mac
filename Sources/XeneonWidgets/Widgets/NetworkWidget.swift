@@ -10,11 +10,14 @@ struct NetworkWidgetView: View {
                 Image(systemName: "network")
                     .font(.system(size: 78))
                     .foregroundStyle(.white)
+                    .accessibilityHidden(true)
                 HStack(spacing: 62) {
                     VStack(spacing: 8) {
                         Label(formatted(inRate), systemImage: "arrow.down")
                             .font(.system(size: 35, weight: .medium))
                             .foregroundStyle(.cyan)
+                            .accessibilityLabel("Download speed")
+                            .accessibilityValue(formatted(inRate))
                         Text("Download")
                             .font(.system(size: 27))
                             .foregroundStyle(.secondary)
@@ -23,6 +26,8 @@ struct NetworkWidgetView: View {
                         Label(formatted(outRate), systemImage: "arrow.up")
                             .font(.system(size: 35, weight: .medium))
                             .foregroundStyle(.orange)
+                            .accessibilityLabel("Upload speed")
+                            .accessibilityValue(formatted(outRate))
                         Text("Upload")
                             .font(.system(size: 27))
                             .foregroundStyle(.secondary)
@@ -30,6 +35,8 @@ struct NetworkWidgetView: View {
                 }
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Network")
     }
 
     private func formatted(_ bps: Double) -> String {

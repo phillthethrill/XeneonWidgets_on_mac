@@ -2,7 +2,7 @@ import SwiftUI
 
 /// A crisp circular arc gauge that renders natively at display resolution.
 struct ArcGauge: View {
-    let value: Double      // 0–100
+    let value: Double
     let color: Color
     let icon: String
     let label: String
@@ -12,14 +12,12 @@ struct ArcGauge: View {
 
     var body: some View {
         ZStack {
-            // Track
             Circle()
                 .trim(from: 0, to: 1)
                 .stroke(Color.white.opacity(0.12), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-210))
                 .frame(width: size, height: size)
 
-            // Fill
             Circle()
                 .trim(from: 0, to: min(value / 100.0 * (240.0 / 360.0), 1))
                 .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
@@ -27,7 +25,6 @@ struct ArcGauge: View {
                 .frame(width: size, height: size)
                 .animation(.easeInOut(duration: 0.4), value: value)
 
-            // Centre content
             VStack(spacing: 5) {
                 Image(systemName: icon)
                     .font(.system(size: 26, weight: .medium))
@@ -38,5 +35,8 @@ struct ArcGauge: View {
             }
         }
         .frame(width: size, height: size)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue("\(Int(value)) percent")
     }
 }

@@ -22,10 +22,16 @@ struct ClockWidgetView: View {
                 Text(Self.timeFmt.string(from: date))
                     .font(.system(size: 96, weight: .light, design: .monospaced))
                     .foregroundStyle(.white)
+                    .accessibilityLabel("Current time")
+                    .accessibilityValue(Self.timeFmt.string(from: date))
                 Text(Self.dateFmt.string(from: date))
                     .font(.system(size: 30, weight: .regular))
                     .foregroundStyle(.secondary)
+                    .accessibilityLabel("Current date")
+                    .accessibilityValue(Self.dateFmt.string(from: date))
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Clock")
     }
 }

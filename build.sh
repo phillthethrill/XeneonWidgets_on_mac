@@ -3,7 +3,18 @@ set -e
 
 APP="XeneonWidgets.app"
 BINARY_NAME="XeneonWidgets"
+ICON="XeneonWidgets.icns"
 BUILD_DIR="$(pwd)"
+
+if [[ ! -f "$ICON" ]]; then
+    echo "error: missing app icon at $BUILD_DIR/$ICON" >&2
+    exit 1
+fi
+
+if [[ ! -f "Resources/Info.plist" ]]; then
+    echo "error: missing Resources/Info.plist" >&2
+    exit 1
+fi
 
 echo "==> Building..."
 swift build -c release 2>&1 | tee /tmp/xeneon-build.log
@@ -14,7 +25,7 @@ mkdir -p "$APP/Contents/MacOS"
 mkdir -p "$APP/Contents/Resources"
 cp ".build/release/$BINARY_NAME" "$APP/Contents/MacOS/"
 cp "Resources/Info.plist" "$APP/Contents/"
-cp "SystemPulse.icns" "$APP/Contents/Resources/"
+cp "$ICON" "$APP/Contents/Resources/"
 
 echo "==> Signing (ad-hoc)..."
 codesign --sign - --force --deep "$APP"

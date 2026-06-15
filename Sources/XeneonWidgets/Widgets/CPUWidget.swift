@@ -7,7 +7,7 @@ struct CPUWidgetView: View {
     var body: some View {
         WidgetCard {
             VStack(spacing: 23) {
-                ArcGauge(value: usage, color: usageColor, icon: "cpu", label: "CPU")
+                ArcGauge(value: usage, color: usageColor, icon: "cpu", label: "CPU usage")
                 Text("CPU")
                     .font(.system(size: 35, weight: .medium))
                     .foregroundStyle(.secondary)
@@ -15,12 +15,17 @@ struct CPUWidgetView: View {
                     Circle()
                         .fill(thermalColor)
                         .frame(width: 16, height: 16)
+                        .accessibilityHidden(true)
                     Text(thermalLabel)
                         .font(.system(size: 26))
                         .foregroundStyle(.secondary)
+                        .accessibilityLabel("Thermal state")
+                        .accessibilityValue(thermalLabel)
                 }
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("CPU")
     }
 
     private var usageColor: Color {

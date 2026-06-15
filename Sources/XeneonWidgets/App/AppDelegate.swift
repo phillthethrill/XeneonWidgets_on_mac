@@ -2,6 +2,8 @@ import AppKit
 import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private static let dashboardVisibleKey = "dashboardVisible"
+
     private var statusItem: NSStatusItem?
     private var widgetWindow: WidgetWindow?
     private var isVisible = true
@@ -10,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        isVisible = UserDefaults.standard.object(forKey: Self.dashboardVisibleKey) as? Bool ?? true
         setupStatusItem()
         statsProvider.startPolling()
         openWindowIfNeeded()
@@ -21,7 +24,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    // MARK: - Status Item
+    func applicationWillTerminate(_ notification: Notification) {
+        statsProvider.stopPolling()
+        NotificationCenter.default.removeObserver(self)
+        widgetWindow?.close()
+        widgetWindow = nil
+    }
 
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -30,13 +38,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.delegate = self
 
-        toggleItem = NSMenuItem(
-            title: "Hide Dashboard",
+        let toggle = NSMenuItem(
+            title: isVisible ? "Hide Dashboard" : "Show Dashboard",
             action: #selector(toggleDashboard),
             keyEquivalent: "d"
         )
-        toggleItem?.target = self
-        menu.addItem(toggleItem!)
+        toggle.target = self
+        toggleItem = toggle
+        menu.addItem(toggle)
         menu.addItem(NSMenuItem.separator())
 
         let statusMenuItem = NSMenuItem(title: xeneonStatusTitle, action: nil, keyEquivalent: "")
@@ -54,7 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateStatusIcon() {
-        if let icon = NSImage(named: "SystemPulse") {
+        if let icon = NSImage(named: "XeneonWidgets") {
             icon.size = NSSize(width: 18, height: 18)
             statusItem?.button?.image = icon
             statusItem?.button?.alphaValue = isVisible ? 1.0 : 0.4
@@ -73,10 +82,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             : "Xeneon Edge: Not Connected"
     }
 
-    // MARK: - Dashboard Toggle
-
     @objc private func toggleDashboard() {
         isVisible.toggle()
+        UserDefaults.standard.set(isVisible, forKey: Self.dashboardVisibleKey)
         if isVisible {
             widgetWindow?.orderFront(nil)
         } else {
@@ -86,34 +94,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateStatusIcon()
     }
 
-    // MARK: - Window Lifecycle
-
     private func openWindowIfNeeded() {
         guard let screen = DisplayManager.xeneonScreen else { return }
-        let content = WidgetContainerView(stats: statsProvider)
-        widgetWindow = WidgetWindow(screen: screen, contentView: content)
-        widgetWindow?.orderFront(nil)
-        isVisible = true
-        toggleItem?.title = "Hide Dashboard"
+
+        if widgetWindow == nil {
+            let content = WidgetContainerView(stats: statsProvider)
+            widgetWindow = WidgetWindow(screen: screen, contentView: content)
+        } else {
+            syncWindowFrame(to: screen)
+        }
+
+        applyVisibilityPreference()
+    }
+
+    private func applyVisibilityPreference() {
+        toggleItem?.title = isVisible ? "Hide Dashboard" : "Show Dashboard"
+        if isVisible {
+            widgetWindow?.orderFront(nil)
+        } else {
+            widgetWindow?.orderOut(nil)
+        }
         updateStatusIcon()
     }
 
+    private func syncWindowFrame(to screen: NSScreen) {
+        guard let window = widgetWindow else { return }
+        if window.frame != screen.frame {
+            window.setFrame(screen.frame, display: true)
+        }
+    }
+
     @objc private func screensChanged() {
-        if DisplayManager.xeneonScreen == nil {
+        if let screen = DisplayManager.xeneonScreen {
+            if widgetWindow == nil {
+                openWindowIfNeeded()
+            } else {
+                syncWindowFrame(to: screen)
+                applyVisibilityPreference()
+            }
+        } else {
             widgetWindow?.close()
             widgetWindow = nil
-            isVisible = false
-        } else if widgetWindow == nil {
-            openWindowIfNeeded()
         }
+
         if let menu = statusItem?.menu,
            let item = menu.item(withTag: 100) {
             item.title = xeneonStatusTitle
         }
     }
 }
-
-// MARK: - NSMenuDelegate
 
 extension AppDelegate: NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {

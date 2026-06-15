@@ -20,7 +20,7 @@
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>CFBundleIconFile</key>
-    <string>SystemPulse</string>
+    <string>XeneonWidgets</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
 </dict>

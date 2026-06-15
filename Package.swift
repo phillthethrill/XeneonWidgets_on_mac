@@ -5,9 +5,22 @@ let package = Package(
     name: "XeneonWidgets",
     platforms: [.macOS(.v13)],
     targets: [
+        .target(
+            name: "XeneonWidgetsCore",
+            path: "Sources/XeneonWidgetsCore"
+        ),
         .executableTarget(
             name: "XeneonWidgets",
-            path: "Sources/XeneonWidgets"
-        )
+            dependencies: ["XeneonWidgetsCore"],
+            path: "Sources/XeneonWidgets",
+            resources: [
+                .process("Resources/XeneonWidgets.icns"),
+            ]
+        ),
+        .executableTarget(
+            name: "XeneonWidgetsSelfTest",
+            dependencies: ["XeneonWidgetsCore"],
+            path: "Sources/XeneonWidgetsSelfTest"
+        ),
     ]
 )
