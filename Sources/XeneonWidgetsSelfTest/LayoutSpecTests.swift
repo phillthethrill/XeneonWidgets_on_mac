@@ -49,6 +49,11 @@ func runLayoutSpecTests() {
     expect(width(of: .cpu, in: clamped) >= LayoutSpec.minBoxWidth, "resize never below min")
     expect(clamped.visible.allSatisfy { $0.width >= LayoutSpec.minBoxWidth }, "neighbours stay ≥ min")
 
+    var grown = LayoutSpec.default(for: .overview)
+    grown.resize(.cpu, width: 1500)
+    expect(grown.visible.allSatisfy { $0.width >= LayoutSpec.minBoxWidth }, "resize keeps min")
+    expectClose(sumWithGaps(grown.visible), LayoutSpec.contentWidth, "still fills width")
+
     do {
         let data = try JSONEncoder().encode(overview)
         let decoded = try JSONDecoder().decode(LayoutSpec.self, from: data)
