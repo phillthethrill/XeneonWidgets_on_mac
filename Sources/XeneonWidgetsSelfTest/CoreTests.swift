@@ -96,6 +96,19 @@ func runCoreTests() {
         expect(false, "network rates should be available after warmup")
     }
 
+    if let wrap = StatsMath.networkRates(
+        currentIn: 0x1000,
+        currentOut: 0x1000,
+        previousIn: 0xFFFF0000,
+        previousOut: 0xFFFF0000,
+        interval: 1
+    ) {
+        expectEqual(wrap.download, Double(0x11000), "networkRates 32-bit wrap matches NetworkMath")
+        expectEqual(wrap.upload, Double(0x11000), "networkRates 32-bit wrap up")
+    } else {
+        expect(false, "networkRates should handle 32-bit wrap")
+    }
+
     expect(StatsMath.isDataInterface("en0"), "en0 is a data interface")
     expect(!StatsMath.isDataInterface("lo0"), "lo0 is not a data interface")
     expect(!StatsMath.isDataInterface("utun4"), "utun4 is not a data interface")

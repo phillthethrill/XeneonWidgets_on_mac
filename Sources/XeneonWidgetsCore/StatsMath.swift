@@ -66,10 +66,11 @@ public enum StatsMath {
         previousOut: UInt64,
         interval: TimeInterval
     ) -> (download: Double, upload: Double)? {
-        guard interval > 0, previousIn > 0 || previousOut > 0 else { return nil }
-
-        let download = max(0, Double(currentIn &- previousIn) / interval)
-        let upload = max(0, Double(currentOut &- previousOut) / interval)
-        return (download, upload)
+        guard let rates = NetworkMath.rates(
+            current: InterfaceCounters(inBytes: currentIn, outBytes: currentOut),
+            previous: InterfaceCounters(inBytes: previousIn, outBytes: previousOut),
+            interval: interval
+        ) else { return nil }
+        return (rates.down, rates.up)
     }
 }
