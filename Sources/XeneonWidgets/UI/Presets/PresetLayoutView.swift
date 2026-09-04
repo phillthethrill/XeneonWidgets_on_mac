@@ -35,7 +35,7 @@ struct PresetLayoutView: View {
             HStack(spacing: 16) {
                 ForEach(spec.visible, id: \.id) { placement in
                     box(placement)
-                        .frame(width: placement.width, height: 608)
+                        .frame(width: placement.width, height: Metrics.bodyHeight)
                 }
             }
         }
