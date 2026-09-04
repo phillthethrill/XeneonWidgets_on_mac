@@ -131,12 +131,8 @@ final class NetworkProvider: ObservableObject, SampledProvider {
             runningUpRate = rates.up
             runningDownPeak = max(runningDownPeak, rates.down)
             runningUpPeak = max(runningUpPeak, rates.up)
-            if aggregated.inBytes >= previous.inBytes {
-                runningDownTotal += aggregated.inBytes - previous.inBytes
-            }
-            if aggregated.outBytes >= previous.outBytes {
-                runningUpTotal += aggregated.outBytes - previous.outBytes
-            }
+            runningDownTotal += Self.byteDelta(current: aggregated.inBytes, previous: previous.inBytes)
+            runningUpTotal += Self.byteDelta(current: aggregated.outBytes, previous: previous.outBytes)
             downHistoryStorage.append(rates.down)
             upHistoryStorage.append(rates.up)
             previousCounters = aggregated
@@ -179,6 +175,17 @@ final class NetworkProvider: ObservableObject, SampledProvider {
             self?.downHistory = downH
             self?.upHistory = upH
         }
+    }
+
+    /// Same wrap rule as `NetworkMath.rates`: 32-bit `if_data` wrap, else 0 when current < previous.
+    private static func byteDelta(current: UInt64, previous: UInt64) -> UInt64 {
+        if current >= previous {
+            return current - previous
+        }
+        if current <= UInt64(UInt32.max), previous <= UInt64(UInt32.max) {
+            return UInt64(UInt32(truncatingIfNeeded: current) &- UInt32(truncatingIfNeeded: previous))
+        }
+        return 0
     }
 
     private static func resolveActive(interfaces: [NetInterface], selection: NetworkSelection) -> NetInterface? {
