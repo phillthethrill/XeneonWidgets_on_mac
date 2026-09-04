@@ -65,7 +65,7 @@ final class DashboardEnvironment {
             }
             .store(in: &cancellables)
 
-        if let preview = AppLaunch.previewPreset {
+        if AppLaunch.isPreview, let preview = AppLaunch.previewPreset {
             state.preset = preview
         }
 
