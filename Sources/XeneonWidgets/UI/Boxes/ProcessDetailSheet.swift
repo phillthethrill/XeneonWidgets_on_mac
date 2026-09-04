@@ -138,8 +138,8 @@ struct ProcessDetailSheet: View {
     }
 
     private var graphs: some View {
-        let cpuValues = detail?.cpuHistory.elements ?? []
-        let memValues = detail?.memHistory.elements ?? []
+        let cpuValues = GraphWindow.samples(detail?.cpuHistory.elements ?? [], sampleCount: 60, width: 354)
+        let memValues = GraphWindow.samples(detail?.memHistory.elements ?? [], sampleCount: 60, width: 354)
         let memMax = max(memValues.max() ?? 1, 1)
         return HStack(spacing: 16) {
             graphColumn(title: "CPU · last 60 s") {
