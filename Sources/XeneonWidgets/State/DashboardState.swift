@@ -12,6 +12,7 @@ enum ConfirmAction: Equatable {
 final class DashboardState: ObservableObject {
     private let settings: SettingsStore
     private let layoutStore: LayoutStore
+    private var storedLayouts: [Preset: LayoutSpec]
 
     @Published var preset: Preset {
         didSet { settings.preset = preset }
@@ -49,26 +50,32 @@ final class DashboardState: ObservableObject {
         sampling = settings.sampling
         timeRanges = settings.timeRanges
 
-        let stored = layoutStore.load()
+        storedLayouts = layoutStore.load()
+        layouts = Self.mergedLayouts(stored: storedLayouts)
+    }
+
+    func layout(for preset: Preset) -> LayoutSpec {
+        storedLayouts[preset] ?? LayoutSpec.default(for: preset)
+    }
+
+    func updateLayout(_ spec: LayoutSpec, for preset: Preset) {
+        storedLayouts[preset] = spec
+        layouts = Self.mergedLayouts(stored: storedLayouts)
+        layoutStore.save(storedLayouts)
+    }
+
+    func resetLayout(for preset: Preset) {
+        storedLayouts.removeValue(forKey: preset)
+        layouts = Self.mergedLayouts(stored: storedLayouts)
+        layoutStore.save(storedLayouts)
+    }
+
+    private static func mergedLayouts(stored: [Preset: LayoutSpec]) -> [Preset: LayoutSpec] {
         var merged: [Preset: LayoutSpec] = [:]
         for item in Preset.allCases {
             merged[item] = stored[item] ?? LayoutSpec.default(for: item)
         }
-        layouts = merged
-    }
-
-    func layout(for preset: Preset) -> LayoutSpec {
-        layouts[preset] ?? LayoutSpec.default(for: preset)
-    }
-
-    func updateLayout(_ spec: LayoutSpec, for preset: Preset) {
-        layouts[preset] = spec
-        layoutStore.save(layouts)
-    }
-
-    func resetLayout(for preset: Preset) {
-        layouts[preset] = LayoutSpec.default(for: preset)
-        layoutStore.save(layouts)
+        return merged
     }
 
     func timeRange(for box: BoxID) -> TimeRange {
