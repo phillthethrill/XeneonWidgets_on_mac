@@ -74,7 +74,11 @@ struct DashboardRootView: View {
                 dragOffset = clampedDrag(value.translation.width)
             }
             .onEnded { value in
-                guard !state.editMode else { return }
+                guard !state.editMode else {
+                    dragOffset = 0
+                    swipeIsHorizontal = nil
+                    return
+                }
                 finishActivity()
                 let horizontal = swipeIsHorizontal ?? (abs(value.translation.height) <= abs(value.translation.width))
                 swipeIsHorizontal = nil

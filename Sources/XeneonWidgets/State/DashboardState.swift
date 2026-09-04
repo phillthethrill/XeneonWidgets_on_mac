@@ -63,9 +63,15 @@ final class DashboardState: ObservableObject {
         storedLayouts[preset] ?? LayoutSpec.default(for: preset)
     }
 
-    func updateLayout(_ spec: LayoutSpec, for preset: Preset) {
+    func updateLayout(_ spec: LayoutSpec, for preset: Preset, persist: Bool = true) {
         storedLayouts[preset] = spec
         layouts = Self.mergedLayouts(stored: storedLayouts)
+        if persist {
+            layoutStore.save(storedLayouts)
+        }
+    }
+
+    func persistLayouts() {
         layoutStore.save(storedLayouts)
     }
 
