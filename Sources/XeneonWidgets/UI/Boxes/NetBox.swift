@@ -15,16 +15,25 @@ struct NetBox: View {
 
     var body: some View {
         BoxContainer(title: "net", meta: network.metaLabel, value: network.valueLabel) {
-            VStack(alignment: .leading, spacing: Metrics.innerGap) {
-                graph
-                    .onTapGesture { showInterfacePopover = false }
-                rates
-                    .onTapGesture { showInterfacePopover = false }
-                if !compact {
-                    chipBlock
+            ZStack(alignment: .topLeading) {
+                if showInterfacePopover {
+                    Color.clear
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                        .onTapGesture { showInterfacePopover = false }
                 }
-                footer
-                    .onTapGesture { showInterfacePopover = false }
+
+                VStack(alignment: .leading, spacing: Metrics.innerGap) {
+                    graph
+                        .allowsHitTesting(!showInterfacePopover)
+                    rates
+                        .allowsHitTesting(!showInterfacePopover)
+                    if !compact {
+                        chipBlock
+                    }
+                    footer
+                        .allowsHitTesting(!showInterfacePopover)
+                }
             }
         }
     }
@@ -101,21 +110,21 @@ struct NetBox: View {
     }
 
     private var chipBlock: some View {
-        ZStack(alignment: .bottom) {
-            chipRow
-            if showInterfacePopover {
-                InterfacePopover(
-                    interfaces: network.interfaces,
-                    selected: network.selection,
-                    onSelect: { selection in
-                        network.selection = selection
-                        showInterfacePopover = false
-                    }
-                )
-                .padding(.bottom, 64)
+        chipRow
+            .overlay(alignment: .bottom) {
+                if showInterfacePopover {
+                    InterfacePopover(
+                        interfaces: network.interfaces,
+                        selected: network.selection,
+                        onSelect: { selection in
+                            network.selection = selection
+                            showInterfacePopover = false
+                        }
+                    )
+                    .padding(.bottom, 64)
+                }
             }
-        }
-        .zIndex(1)
+            .zIndex(1)
     }
 
     private var chipRow: some View {
