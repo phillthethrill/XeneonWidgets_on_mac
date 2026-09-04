@@ -41,8 +41,8 @@ struct BoxContainer<Content: View>: View {
         }
         .padding(padding)
         .background(theme.surface, in: shape)
-        .overlay(shape.stroke(glow ?? theme.hairline, lineWidth: Metrics.hairline))
         .clipShape(shape)
+        .overlay(shape.strokeBorder(glow ?? theme.hairline, lineWidth: Metrics.hairline))
         .modifier(BoxGlow(color: glow))
     }
 

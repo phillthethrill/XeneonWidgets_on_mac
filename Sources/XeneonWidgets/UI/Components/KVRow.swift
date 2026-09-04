@@ -21,11 +21,21 @@ struct KVRow: View {
                 .font(Typography.small)
                 .foregroundStyle(theme.text3)
             Spacer(minLength: 12)
-            Text(value)
-                .font(mono ? Typography.smallMono : Typography.small)
-                .monoDigits()
+            valueText
                 .foregroundStyle(valueColor ?? theme.text2)
         }
         .lineLimit(1)
+    }
+
+    @ViewBuilder
+    private var valueText: some View {
+        if mono {
+            Text(value)
+                .font(Typography.smallMono)
+                .monoDigits()
+        } else {
+            Text(value)
+                .font(Typography.small)
+        }
     }
 }
