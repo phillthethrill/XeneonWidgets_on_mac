@@ -84,7 +84,7 @@ public enum NetworkMath {
     }
 
     /// Positive delta, treating a 32-bit `if_data` wrap when both values fit in `UInt32`.
-    static func byteDelta(current: UInt64, previous: UInt64) -> UInt64 {
+    public static func byteDelta(current: UInt64, previous: UInt64) -> UInt64 {
         if current >= previous {
             return current - previous
         }

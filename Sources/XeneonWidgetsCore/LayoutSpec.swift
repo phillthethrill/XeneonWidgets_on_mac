@@ -141,5 +141,27 @@ public struct LayoutSpec: Codable, Equatable, Sendable {
         for index in visibleIndexes {
             boxes[index].width *= scale
         }
+
+        for index in visibleIndexes {
+            boxes[index].width = max(boxes[index].width, Self.minBoxWidth)
+        }
+
+        let afterClamp = visibleIndexes.reduce(0.0) { $0 + boxes[$1].width }
+        let excess = afterClamp - target
+        if excess > 1e-9 {
+            let donors = visibleIndexes.filter { boxes[$0].width > Self.minBoxWidth }
+            let donorExtra = donors.reduce(0.0) { $0 + (boxes[$1].width - Self.minBoxWidth) }
+            guard donorExtra > 0 else { return }
+            let take = min(excess, donorExtra)
+            for index in donors {
+                let extra = boxes[index].width - Self.minBoxWidth
+                boxes[index].width -= take * (extra / donorExtra)
+            }
+        } else if excess < -1e-9 {
+            let share = (-excess) / Double(count)
+            for index in visibleIndexes {
+                boxes[index].width += share
+            }
+        }
     }
 }

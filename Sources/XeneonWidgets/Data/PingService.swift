@@ -44,9 +44,10 @@ final class PingService {
             shutdown(fd, SHUT_RDWR)
             close(fd)
         }
-        queue.async { [weak self] in
-            self?.timer?.cancel()
-            self?.timer = nil
+        let timerToCancel = timer
+        timer = nil
+        queue.async {
+            timerToCancel?.cancel()
         }
     }
 

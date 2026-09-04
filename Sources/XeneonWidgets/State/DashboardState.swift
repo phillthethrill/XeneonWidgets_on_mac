@@ -4,8 +4,8 @@ import Foundation
 import XeneonWidgetsCore
 
 enum ConfirmAction: Equatable {
-    case terminate(pid_t)
-    case forceQuit(pid_t)
+    case terminate(pid_t, startTime: Date?)
+    case forceQuit(pid_t, startTime: Date?)
 }
 
 @MainActor

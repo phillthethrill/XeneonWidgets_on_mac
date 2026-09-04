@@ -99,6 +99,14 @@ public enum ProcessMath {
         }
     }
 
+    /// True when a live sample has this `pid` and the same `startTime`.
+    /// Both `nil` start times match: identity is pid-only when start time is unknown.
+    /// A `nil` expected start time does not match a non-nil sample start time (Optional `==`).
+    public static func identityMatches(samples: [ProcessSample], pid: pid_t, startTime: Date?) -> Bool {
+        guard let match = samples.first(where: { $0.pid == pid }) else { return false }
+        return match.startTime == startTime
+    }
+
     public static func memLabel(_ bytes: UInt64) -> String {
         let gb = 1_073_741_824.0
         let value = Double(bytes)

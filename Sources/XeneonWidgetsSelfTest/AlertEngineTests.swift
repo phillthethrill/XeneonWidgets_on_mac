@@ -92,4 +92,12 @@ func runAlertEngineTests() {
     )
     expectEqual(mixed.map(\.level), [.crit, .warn, .warn], "crit before warn")
     expectEqual(mixed.first?.id, "thermal", "crit first")
+
+    var untitledEngine = AlertEngine()
+    let untitled = untitledEngine.evaluate(
+        inputs(disks: [("Untitled", 96), ("Untitled", 97)], at: t0)
+    )
+    expectEqual(untitled.count, 2, "two Untitled disks both alert")
+    expectEqual(Set(untitled.map(\.id)).count, 2, "Untitled disk ids are unique")
+    expect(untitled.allSatisfy { $0.text.contains("Untitled") }, "Untitled alerts keep the volume name")
 }

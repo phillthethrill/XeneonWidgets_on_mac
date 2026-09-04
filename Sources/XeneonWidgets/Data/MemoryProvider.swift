@@ -44,7 +44,8 @@ final class MemoryProvider: ObservableObject, SampledProvider {
         let snapshot = Self.readBreakdown()
         let swap = Self.readSwap()
         let seeded = Self.readPressureLevel()
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
             self.breakdown = snapshot
             self.swapUsed = swap.used
             self.swapTotal = swap.total

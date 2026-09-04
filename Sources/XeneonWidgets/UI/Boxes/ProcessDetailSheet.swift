@@ -189,10 +189,10 @@ struct ProcessDetailSheet: View {
         } else {
             HStack(spacing: 12) {
                 DashButton("Terminate", kind: .secondary) {
-                    state.confirm = .terminate(process.pid)
+                    state.confirm = .terminate(process.pid, startTime: process.startTime)
                 }
                 DashButton("Force Quit…", kind: .destructiveTinted) {
-                    state.confirm = .forceQuit(process.pid)
+                    state.confirm = .forceQuit(process.pid, startTime: process.startTime)
                 }
             }
         }

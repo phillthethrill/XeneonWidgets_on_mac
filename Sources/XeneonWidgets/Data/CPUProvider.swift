@@ -7,7 +7,10 @@ import XeneonWidgetsCore
 struct GPUStats: Equatable {
     var utilization: Double
     var memoryUsedBytes: UInt64
+    /// GPU-specific total when the registry provides one. `0` when `hasRealTotal` is false.
+    /// Part B should render used-only (`4.2 GB`) when `hasRealTotal` is false — do not treat this as system RAM.
     var memoryTotalBytes: UInt64
+    var hasRealTotal: Bool
     var source: String
 }
 
@@ -227,12 +230,40 @@ final class CPUProvider: ObservableObject, SampledProvider {
         } else {
             memoryUsed = 0
         }
+        let total = gpuMemoryTotal(from: stats, used: memoryUsed)
         return GPUStats(
             utilization: utilization.doubleValue,
             memoryUsedBytes: memoryUsed,
-            memoryTotalBytes: ProcessInfo.processInfo.physicalMemory,
+            memoryTotalBytes: total ?? 0,
+            hasRealTotal: total != nil,
             source: "IOKit perf stats"
         )
+    }
+
+    /// Registry GPU total only — never `physicalMemory`. Used + free is accepted as a real total.
+    private func gpuMemoryTotal(from stats: [String: Any], used: UInt64) -> UInt64? {
+        if let total = uint64(from: stats["vramTotalBytes"]) ?? uint64(from: stats["VRAM,total"]) {
+            return total
+        }
+        if let free = uint64(from: stats["vramFreeBytes"]) {
+            return used + free
+        }
+        return nil
+    }
+
+    private func uint64(from value: Any?) -> UInt64? {
+        switch value {
+        case let number as NSNumber:
+            return number.uint64Value
+        case let value as UInt64:
+            return value
+        case let value as Int64:
+            return value >= 0 ? UInt64(value) : nil
+        case let value as Int:
+            return value >= 0 ? UInt64(value) : nil
+        default:
+            return nil
+        }
     }
 }
 

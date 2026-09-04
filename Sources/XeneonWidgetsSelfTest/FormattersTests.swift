@@ -11,6 +11,9 @@ func runFormattersTests() {
 
     let gb = UInt64(1_073_741_824)
     expectEqual(Formatters.capacity(612 * gb), "612 GB", "capacity under 1000 GB")
+    expectEqual(Formatters.capacity(999 * gb), "999 GB", "999 GB stays in GB")
+    expectEqual(Formatters.capacity(1000 * gb), "1000 GB", "1000 GB stays in GB; TB only at ≥ 1024 GB")
+    expectEqual(Formatters.capacity(1024 * gb), "1.00 TB", "1024 GB is 1.00 TB")
     let onePointEightSixTB = UInt64((1.86 * 1024 * 1024 * 1024 * 1024).rounded())
     expectEqual(Formatters.capacity(onePointEightSixTB), "1.86 TB", "capacity in TB")
 
