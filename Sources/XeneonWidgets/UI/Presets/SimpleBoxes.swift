@@ -25,10 +25,11 @@ struct GPUBox: View {
     }
 
     private func memoryLabel(_ gpu: GPUStats) -> String {
-        let used = Formatters.gigabytes(gpu.memoryUsedBytes, decimals: 1)
-            .replacingOccurrences(of: " GB", with: "")
-        let total = Formatters.gigabytes(gpu.memoryTotalBytes, decimals: 0)
-        return "\(used) / \(total)"
+        Formatters.gpuMemory(
+            usedBytes: gpu.memoryUsedBytes,
+            totalBytes: gpu.memoryTotalBytes,
+            hasRealTotal: gpu.hasRealTotal
+        )
     }
 }
 

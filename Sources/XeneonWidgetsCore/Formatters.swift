@@ -14,6 +14,14 @@ public enum Formatters {
         return String(format: "%.\(decimals)f GB", gb)
     }
 
+    /// Used-only when the registry has no GPU-specific total. Never treat `0` as a denominator.
+    public static func gpuMemory(usedBytes: UInt64, totalBytes: UInt64, hasRealTotal: Bool) -> String {
+        let used = gigabytes(usedBytes, decimals: 1)
+        guard hasRealTotal else { return used }
+        let usedShort = used.replacingOccurrences(of: " GB", with: "")
+        return "\(usedShort) / \(gigabytes(totalBytes, decimals: 0))"
+    }
+
     public static func capacity(_ bytes: UInt64) -> String {
         let gb = Double(bytes) / 1_073_741_824.0
         if gb < 1024 {

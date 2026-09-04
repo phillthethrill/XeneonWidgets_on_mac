@@ -205,10 +205,11 @@ struct CPUBox: View {
     }
 
     private func gpuMemoryLabel(_ gpu: GPUStats) -> String {
-        let used = Formatters.gigabytes(gpu.memoryUsedBytes, decimals: 1)
-            .replacingOccurrences(of: " GB", with: "")
-        let total = Formatters.gigabytes(gpu.memoryTotalBytes, decimals: 0)
-        return "\(used) / \(total)"
+        Formatters.gpuMemory(
+            usedBytes: gpu.memoryUsedBytes,
+            totalBytes: gpu.memoryTotalBytes,
+            hasRealTotal: gpu.hasRealTotal
+        )
     }
 
     private func windowed(_ buffer: RingBuffer<Double>, width: CGFloat) -> [Double] {

@@ -8,6 +8,16 @@ func runFormattersTests() {
     expectEqual(Formatters.percent1(31.62), "31.6%", "percent1 one decimal")
     expectEqual(Formatters.gigabytes(12_884_901_888), "12.0 GB", "gigabytes default decimals")
     expectEqual(Formatters.gigabytes(12_884_901_888, decimals: 2), "12.00 GB", "gigabytes two decimals")
+    expectEqual(
+        Formatters.gpuMemory(usedBytes: 12_884_901_888, totalBytes: 36 * 1_073_741_824, hasRealTotal: true),
+        "12.0 / 36 GB",
+        "gpuMemory used / total when registry has a real total"
+    )
+    expectEqual(
+        Formatters.gpuMemory(usedBytes: 12_884_901_888, totalBytes: 0, hasRealTotal: false),
+        "12.0 GB",
+        "gpuMemory used-only when total is unknown"
+    )
 
     let gb = UInt64(1_073_741_824)
     expectEqual(Formatters.capacity(612 * gb), "612 GB", "capacity under 1000 GB")
