@@ -1,0 +1,31 @@
+import SwiftUI
+
+struct KVRow: View {
+    let key: String
+    let value: String
+    let valueColor: Color?
+    let mono: Bool
+
+    @Environment(\.theme) private var theme
+
+    init(key: String, value: String, valueColor: Color? = nil, mono: Bool = true) {
+        self.key = key
+        self.value = value
+        self.valueColor = valueColor
+        self.mono = mono
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(key)
+                .font(Typography.small)
+                .foregroundStyle(theme.text3)
+            Spacer(minLength: 12)
+            Text(value)
+                .font(mono ? Typography.smallMono : Typography.small)
+                .monoDigits()
+                .foregroundStyle(valueColor ?? theme.text2)
+        }
+        .lineLimit(1)
+    }
+}
