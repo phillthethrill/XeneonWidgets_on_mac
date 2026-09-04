@@ -42,6 +42,7 @@ struct DashboardRootView: View {
             }
             .frame(width: Metrics.screenWidth, height: Metrics.screenHeight, alignment: .leading)
             .offset(x: pagerOffset)
+            if state.editMode { EditToolbarHost(env: env) }
         }
         .frame(width: Metrics.screenWidth, height: Metrics.screenHeight, alignment: .topLeading)
         .clipped()
@@ -59,6 +60,7 @@ struct DashboardRootView: View {
     private var swipeGesture: some Gesture {
         DragGesture(minimumDistance: 40)
             .onChanged { value in
+                guard !state.editMode else { return }
                 noteActivityOnce()
                 if swipeIsHorizontal == nil {
                     swipeIsHorizontal = abs(value.translation.height) <= abs(value.translation.width)
@@ -70,6 +72,7 @@ struct DashboardRootView: View {
                 dragOffset = clampedDrag(value.translation.width)
             }
             .onEnded { value in
+                guard !state.editMode else { return }
                 finishActivity()
                 let horizontal = swipeIsHorizontal ?? (abs(value.translation.height) <= abs(value.translation.width))
                 swipeIsHorizontal = nil
