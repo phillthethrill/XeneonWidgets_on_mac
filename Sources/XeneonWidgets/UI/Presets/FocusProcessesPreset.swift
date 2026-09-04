@@ -26,11 +26,11 @@ struct FocusProcessesPreset: View {
                     detail: processes.detail,
                     state: state,
                     onTerminate: {
-                        _ = processes.terminate(process.pid)
+                        _ = processes.terminate(process.pid, startedAt: process.startTime)
                         closeSheet()
                     },
                     onForceQuit: {
-                        _ = processes.forceQuit(process.pid)
+                        _ = processes.forceQuit(process.pid, startedAt: process.startTime)
                         closeSheet()
                     },
                     onClose: closeSheet

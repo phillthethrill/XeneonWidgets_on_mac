@@ -48,11 +48,15 @@ final class ProcessProvider: ObservableObject, SampledProvider {
     private var runningAppNames: [pid_t: String] = [:]
 
     private var lastSample: Date?
+    private var lastRunningAppRefresh: Date?
     private var previousCPU: [pid_t: PreviousCPU] = [:]
     private var userCache: [uid_t: String] = [:]
+    private var pathCache: [PathCacheKey: String] = [:]
     private var lastWatchedPID: pid_t?
+    private var lastDetailInterval: SamplingInterval?
     private var detailCPU = RingBuffer<Double>(capacity: 60)
     private var detailMem = RingBuffer<Double>(capacity: 60)
+    private var workspaceObservers: [NSObjectProtocol] = []
 
     private let timebase: mach_timebase_info_data_t = {
         var info = mach_timebase_info_data_t()
@@ -63,10 +67,19 @@ final class ProcessProvider: ObservableObject, SampledProvider {
     init() {
         if Thread.isMainThread {
             refreshRunningApps()
+            startWorkspaceObservers()
         } else {
             DispatchQueue.main.async { [weak self] in
                 self?.refreshRunningApps()
+                self?.startWorkspaceObservers()
             }
+        }
+    }
+
+    deinit {
+        let center = NSWorkspace.shared.notificationCenter
+        for observer in workspaceObservers {
+            center.removeObserver(observer)
         }
     }
 
@@ -77,7 +90,7 @@ final class ProcessProvider: ObservableObject, SampledProvider {
         }
         lastSample = now
 
-        scheduleRunningAppRefresh()
+        scheduleRunningAppRefresh(now: now)
 
         stateLock.lock()
         let appPIDs = runningAppPIDs
@@ -92,10 +105,12 @@ final class ProcessProvider: ObservableObject, SampledProvider {
         nextCPU.reserveCapacity(pids.count)
 
         let watched = watchedPID
-        if watched != lastWatchedPID {
-            detailCPU = RingBuffer(capacity: 60)
-            detailMem = RingBuffer(capacity: 60)
+        let detailCapacity = Self.detailSampleCount(intervalSeconds: interval.rawValue)
+        if watched != lastWatchedPID || lastDetailInterval != interval {
+            detailCPU = RingBuffer(capacity: detailCapacity)
+            detailMem = RingBuffer(capacity: detailCapacity)
             lastWatchedPID = watched
+            lastDetailInterval = interval
         }
 
         let wallNow = DispatchTime.now().uptimeNanoseconds
@@ -114,6 +129,9 @@ final class ProcessProvider: ObservableObject, SampledProvider {
         }
 
         previousCPU = nextCPU
+        pathCache = pathCache.filter { key, _ in
+            nextCPU[key.pid]?.startTime == key.startTime
+        }
 
         var publishedDetail: ProcessDetail?
         if let watched, let match = samples.first(where: { $0.pid == watched }) {
@@ -140,7 +158,19 @@ final class ProcessProvider: ObservableObject, SampledProvider {
 
     func historyCapacityChanged(to capacity: Int) {
         guard capacity >= 1 else { return }
-        // Detail graphs stay at 60 samples (last 60 s at the 1 Hz process cap).
+        let interval = SamplingInterval.allCases.first { $0.historyCapacity == capacity }
+        let detailCapacity = Self.detailSampleCount(intervalSeconds: interval?.rawValue ?? 1)
+        detailCPU.resize(capacity: detailCapacity)
+        detailMem.resize(capacity: detailCapacity)
+        if let interval {
+            lastDetailInterval = interval
+        }
+        let cpu = detailCPU
+        let mem = detailMem
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.detail != nil else { return }
+            self.detail = ProcessDetail(cpuHistory: cpu, memHistory: mem)
+        }
     }
 
     func icon(for proc: ProcessSample) -> NSImage {
@@ -166,12 +196,27 @@ final class ProcessProvider: ObservableObject, SampledProvider {
         return image
     }
 
-    func terminate(_ pid: pid_t) -> Bool {
-        kill(pid, SIGTERM) == 0
+    func terminate(_ pid: pid_t, startedAt: Date?) -> Bool {
+        guard pid != getpid(),
+              ProcessMath.identityMatches(samples: processes, pid: pid, startTime: startedAt)
+        else { return false }
+        return kill(pid, SIGTERM) == 0
     }
 
-    func forceQuit(_ pid: pid_t) -> Bool {
-        kill(pid, SIGKILL) == 0
+    func forceQuit(_ pid: pid_t, startedAt: Date?) -> Bool {
+        guard pid != getpid(),
+              ProcessMath.identityMatches(samples: processes, pid: pid, startTime: startedAt)
+        else { return false }
+        return kill(pid, SIGKILL) == 0
+    }
+
+    private struct PathCacheKey: Hashable {
+        var pid: pid_t
+        var startTime: UInt64
+    }
+
+    private static func detailSampleCount(intervalSeconds: TimeInterval) -> Int {
+        max(1, Int((60.0 / max(intervalSeconds, 1)).rounded()))
     }
 
     private struct PreviousCPU {
@@ -216,7 +261,7 @@ final class ProcessProvider: ObservableObject, SampledProvider {
             cpu = ProcessMath.cpuPercent(deltaCPUNanoseconds: deltaCPU, deltaWallNanoseconds: deltaWall)
         }
 
-        let path = processPath(pid: pid)
+        let path = processPath(pid: pid, startTime: startTimeTicks)
         let isApp = appPIDs.contains(pid) || path.contains(".app/")
         let uid = bsd.pbi_uid
         let isSystem =
@@ -281,12 +326,15 @@ final class ProcessProvider: ObservableObject, SampledProvider {
         return pids.prefix(count).filter { $0 > 0 }
     }
 
-    private func processPath(pid: pid_t) -> String {
+    private func processPath(pid: pid_t, startTime: UInt64) -> String {
+        let key = PathCacheKey(pid: pid, startTime: startTime)
+        if let cached = pathCache[key] { return cached }
         // Darwin does not import PROC_PIDPATHINFO_MAXSIZE (4 * MAXPATHLEN).
         var buffer = [CChar](repeating: 0, count: 4 * Int(MAXPATHLEN))
         let length = proc_pidpath(pid, &buffer, UInt32(buffer.count))
-        guard length > 0 else { return "" }
-        return String(cString: buffer)
+        let path = length > 0 ? String(cString: buffer) : ""
+        pathCache[key] = path
+        return path
     }
 
     private func openFileCount(for pid: pid_t) -> Int? {
@@ -324,10 +372,36 @@ final class ProcessProvider: ObservableObject, SampledProvider {
         return denom.dividingFullWidth(product).quotient
     }
 
-    private func scheduleRunningAppRefresh() {
+    private func scheduleRunningAppRefresh(now: Date) {
+        if let lastRunningAppRefresh, now.timeIntervalSince(lastRunningAppRefresh) < 5 {
+            return
+        }
+        lastRunningAppRefresh = now
         DispatchQueue.main.async { [weak self] in
             self?.refreshRunningApps()
         }
+    }
+
+    private func startWorkspaceObservers() {
+        guard workspaceObservers.isEmpty else { return }
+        let center = NSWorkspace.shared.notificationCenter
+        let refresh: (Notification) -> Void = { [weak self] _ in
+            self?.refreshRunningApps()
+        }
+        workspaceObservers = [
+            center.addObserver(
+                forName: NSWorkspace.didLaunchApplicationNotification,
+                object: nil,
+                queue: .main,
+                using: refresh
+            ),
+            center.addObserver(
+                forName: NSWorkspace.didTerminateApplicationNotification,
+                object: nil,
+                queue: .main,
+                using: refresh
+            ),
+        ]
     }
 
     private func refreshRunningApps() {
