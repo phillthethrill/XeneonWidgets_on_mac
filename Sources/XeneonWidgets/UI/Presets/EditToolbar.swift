@@ -62,7 +62,7 @@ struct EditToolbarHost: View {
         let spec = state.layout(for: state.preset)
         EditToolbar(
             presetTitle: state.preset.title,
-            hidden: spec.hiddenIDs,
+            hidden: Self.hiddenChipOrder(spec.hiddenIDs),
             onShow: { id in
                 var next = state.layout(for: state.preset)
                 next.show(id)
@@ -85,5 +85,11 @@ struct EditToolbarHost: View {
         .padding(.bottom, 16)
         .frame(width: Metrics.screenWidth, height: Metrics.screenHeight, alignment: .bottom)
         .zIndex(100)
+    }
+
+    /// JSX toolbar order is Battery, GPU, Clock; remaining hidden ids keep layout order.
+    private static func hiddenChipOrder(_ ids: [BoxID]) -> [BoxID] {
+        let preferred: [BoxID] = [.battery, .gpu, .clock]
+        return preferred.filter(ids.contains) + ids.filter { !preferred.contains($0) }
     }
 }

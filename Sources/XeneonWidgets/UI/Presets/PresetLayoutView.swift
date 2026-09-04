@@ -55,6 +55,15 @@ struct PresetLayoutView<Overlay: View>: View {
         }
         .padding(24)
         .frame(width: Metrics.screenWidth, height: Metrics.screenHeight)
+        .onChange(of: state.editMode) { editing in
+            if !editing {
+                clearEditGestures(persist: true)
+            }
+        }
+        .onChange(of: state.preset) { _ in
+            let dirty = draggingID != nil || resizingID != nil
+            clearEditGestures(persist: dirty)
+        }
     }
 
     @ViewBuilder
@@ -87,7 +96,7 @@ struct PresetLayoutView<Overlay: View>: View {
         )
         .offset(x: dragging ? dragVisualOffset(for: placement.id, spec: spec) : 0)
         .zIndex(dragging ? 10 : 0)
-        .simultaneousGesture(enterEditGesture)
+        .enterEditLongPress(enabled: !editing, gesture: enterEditGesture)
         .editBoxDrag(enabled: editing && resizingID == nil, gesture: boxDrag(for: placement, spec: spec))
     }
 
@@ -117,6 +126,7 @@ struct PresetLayoutView<Overlay: View>: View {
                 dragTranslation = 0
                 dragStartSpec = nil
                 dragStartOrigins = [:]
+                state.persistLayouts()
                 state.noteActivity()
             }
     }
@@ -144,7 +154,7 @@ struct PresetLayoutView<Overlay: View>: View {
         var next = startSpec
         next.move(id, to: target)
         withAnimation(Motion.siblingSlide) {
-            state.updateLayout(next, for: preset)
+            state.updateLayout(next, for: preset, persist: false)
         }
     }
 
@@ -170,14 +180,28 @@ struct PresetLayoutView<Overlay: View>: View {
         }
         guard var spec = resizeStartSpec else { return }
         spec.resize(id, width: resizeStartWidth + Double(delta))
-        state.updateLayout(spec, for: preset)
+        state.updateLayout(spec, for: preset, persist: false)
     }
 
     private func endResize() {
         resizeStartSpec = nil
         resizeStartWidth = 0
         resizingID = nil
+        state.persistLayouts()
         state.noteActivity()
+    }
+
+    private func clearEditGestures(persist: Bool) {
+        draggingID = nil
+        dragTranslation = 0
+        dragStartSpec = nil
+        dragStartOrigins = [:]
+        resizingID = nil
+        resizeStartSpec = nil
+        resizeStartWidth = 0
+        if persist {
+            state.persistLayouts()
+        }
     }
 
     private func origins(of spec: LayoutSpec) -> [BoxID: CGFloat] {
@@ -212,6 +236,17 @@ private extension View {
     func editBoxDrag<G: Gesture>(enabled: Bool, gesture: G) -> some View {
         if enabled {
             self.gesture(gesture)
+        } else {
+            self
+        }
+    }
+
+    /// Exclusive 0.6 s long-press on the box wrapper so ProcBox chip/row long-press
+    /// loses while edit is recognising. Taps still pass through (they never reach 0.6 s).
+    @ViewBuilder
+    func enterEditLongPress<G: Gesture>(enabled: Bool, gesture: G) -> some View {
+        if enabled {
+            self.highPriorityGesture(gesture)
         } else {
             self
         }
