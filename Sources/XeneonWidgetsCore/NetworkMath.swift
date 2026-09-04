@@ -78,9 +78,20 @@ public enum NetworkMath {
         interval: TimeInterval
     ) -> (down: Double, up: Double)? {
         guard interval > 0, previous != .zero else { return nil }
-        let down = max(0, Double(current.inBytes &- previous.inBytes) / interval)
-        let up = max(0, Double(current.outBytes &- previous.outBytes) / interval)
+        let down = Double(byteDelta(current: current.inBytes, previous: previous.inBytes)) / interval
+        let up = Double(byteDelta(current: current.outBytes, previous: previous.outBytes)) / interval
         return (down, up)
+    }
+
+    /// Positive delta, treating a 32-bit `if_data` wrap when both values fit in `UInt32`.
+    static func byteDelta(current: UInt64, previous: UInt64) -> UInt64 {
+        if current >= previous {
+            return current - previous
+        }
+        if current <= UInt64(UInt32.max), previous <= UInt64(UInt32.max) {
+            return UInt64(UInt32(truncatingIfNeeded: current) &- UInt32(truncatingIfNeeded: previous))
+        }
+        return 0
     }
 
     public static func kind(
