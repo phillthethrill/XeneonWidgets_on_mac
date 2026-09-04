@@ -33,6 +33,7 @@ struct HoldToConfirmButton: View {
                 .padding(.horizontal, 20)
             }
         }
+        .frame(maxWidth: .infinity)
         .frame(height: 56)
         .clipShape(RoundedRectangle(cornerRadius: Metrics.buttonRadius))
         .contentShape(RoundedRectangle(cornerRadius: Metrics.buttonRadius))

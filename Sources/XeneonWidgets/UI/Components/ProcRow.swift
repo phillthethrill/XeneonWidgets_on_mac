@@ -108,12 +108,12 @@ struct ProcRow: View {
                 .frame(width: 140, alignment: .leading)
             threadsText
                 .frame(width: 60, alignment: .leading)
-            Sparkline(values: model.memHistory, color: theme.text3)
+            Sparkline(values: model.memHistory, color: theme.text3, max: 8)
                 .frame(width: 80, height: 22)
                 .frame(width: 90)
             memText
                 .frame(width: 110, alignment: .trailing)
-            Sparkline(values: model.cpuHistory, color: cpuColor)
+            Sparkline(values: model.cpuHistory, color: cpuColor, max: 100)
                 .frame(width: 80, height: 22)
                 .frame(width: 90)
             cpuText
