@@ -14,10 +14,9 @@ struct FocusProcessesPreset: View {
     }
 
     var body: some View {
-        ZStack(alignment: .trailing) {
-            PresetLayoutView(env: env, preset: .focusProcesses) { placement in
-                AnyView(box(for: placement))
-            }
+        PresetLayoutView(env: env, preset: .focusProcesses) { placement in
+            AnyView(box(for: placement))
+        } bodyOverlay: {
             if let process = selectedProcess {
                 ProcessDetailSheet(
                     process: process,
@@ -34,8 +33,10 @@ struct FocusProcessesPreset: View {
                     },
                     onClose: closeSheet
                 )
+                .transition(.move(edge: .trailing))
             }
         }
+        .animation(Motion.siblingSlide, value: state.selectedPID)
         .onChange(of: state.selectedPID) { _ in
             state.confirm = nil
         }

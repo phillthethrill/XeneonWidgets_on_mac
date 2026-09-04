@@ -33,12 +33,16 @@ struct MemBox: View {
             valueColor: valueColor,
             glow: glow
         ) {
-            usedRow(usedLabel: usedLabel, memState: memState, swap: swap)
-            SegBar(segments: segments(for: breakdown))
-            Legend(items: legendItems(for: breakdown), columns: compact ? 1 : 2)
-            Hairline()
-            disksHeader
-            diskRows
+            VStack(alignment: .leading, spacing: Metrics.innerGap) {
+                usedRow(usedLabel: usedLabel, memState: memState, swap: swap)
+                SegBar(segments: segments(for: breakdown))
+                Legend(items: legendItems(for: breakdown), columns: compact ? 1 : 2)
+                Hairline()
+                disksHeader
+                diskRows
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 
