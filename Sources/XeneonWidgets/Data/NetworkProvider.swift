@@ -41,6 +41,11 @@ final class NetworkProvider: ObservableObject, SampledProvider {
     @Published private(set) var upHistory: RingBuffer<Double>
     @Published private(set) var wifi: WiFiInfo? = nil
     @Published private(set) var pingMilliseconds: Double? = nil
+    @Published var pingHost: String {
+        didSet {
+            ping.setHost(pingHost)
+        }
+    }
 
     var hostName: String
 
@@ -49,8 +54,14 @@ final class NetworkProvider: ObservableObject, SampledProvider {
     }
 
     var valueLabel: String {
-        guard let iface = activeInterface else { return "—" }
-        return "\(iface.name) · \(iface.displayName)"
+        switch selection {
+        case .auto:
+            let n = interfaces.filter { $0.isActive && $0.name.hasPrefix("en") }.count
+            return "Auto · \(n) ifaces"
+        case .interface:
+            guard let iface = activeInterface else { return "—" }
+            return "\(iface.name) · \(iface.displayName)"
+        }
     }
 
     var metaLabel: String {
@@ -80,6 +91,7 @@ final class NetworkProvider: ObservableObject, SampledProvider {
     init(historyCapacity: Int, selection: NetworkSelection, pingHost: String) {
         self.selection = selection
         self.selectionSnapshot = selection
+        self.pingHost = pingHost
         self.downHistory = RingBuffer(capacity: historyCapacity)
         self.upHistory = RingBuffer(capacity: historyCapacity)
         self.downHistoryStorage = RingBuffer(capacity: historyCapacity)
@@ -131,8 +143,8 @@ final class NetworkProvider: ObservableObject, SampledProvider {
             runningUpRate = rates.up
             runningDownPeak = max(runningDownPeak, rates.down)
             runningUpPeak = max(runningUpPeak, rates.up)
-            runningDownTotal += Self.byteDelta(current: aggregated.inBytes, previous: previous.inBytes)
-            runningUpTotal += Self.byteDelta(current: aggregated.outBytes, previous: previous.outBytes)
+            runningDownTotal += NetworkMath.byteDelta(current: aggregated.inBytes, previous: previous.inBytes)
+            runningUpTotal += NetworkMath.byteDelta(current: aggregated.outBytes, previous: previous.outBytes)
             downHistoryStorage.append(rates.down)
             upHistoryStorage.append(rates.up)
             previousCounters = aggregated
@@ -175,17 +187,6 @@ final class NetworkProvider: ObservableObject, SampledProvider {
             self?.downHistory = downH
             self?.upHistory = upH
         }
-    }
-
-    /// Same wrap rule as `NetworkMath.rates`: 32-bit `if_data` wrap, else 0 when current < previous.
-    private static func byteDelta(current: UInt64, previous: UInt64) -> UInt64 {
-        if current >= previous {
-            return current - previous
-        }
-        if current <= UInt64(UInt32.max), previous <= UInt64(UInt32.max) {
-            return UInt64(UInt32(truncatingIfNeeded: current) &- UInt32(truncatingIfNeeded: previous))
-        }
-        return 0
     }
 
     private static func resolveActive(interfaces: [NetInterface], selection: NetworkSelection) -> NetInterface? {

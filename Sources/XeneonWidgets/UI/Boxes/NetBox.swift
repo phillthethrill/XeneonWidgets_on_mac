@@ -35,8 +35,11 @@ struct NetBox: View {
                     }
                     footer
                         .allowsHitTesting(!showInterfacePopover)
+                    Spacer(minLength: 0)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 
@@ -139,6 +142,7 @@ struct NetBox: View {
                     onSelect: { _ in select(chip) },
                     onLongPress: { _ in showInterfacePopover = true }
                 )
+                .frame(maxWidth: .infinity)
                 .opacity(isAvailable(chip) ? 1 : 0.4)
             }
         }
@@ -166,7 +170,7 @@ struct NetBox: View {
             Text(value)
         case .ping(let milliseconds):
             HStack(spacing: 0) {
-                Text("ping \(Self.pingHost) ")
+                Text("ping \(network.pingHost) ")
                 Text("\(Self.pingLabel(milliseconds)) ms")
                     .foregroundStyle(theme.color(Threshold.ping.level(milliseconds)))
                     .animation(Motion.colorFade, value: Threshold.ping.level(milliseconds))
@@ -248,8 +252,6 @@ struct NetBox: View {
         String(format: "%.0f", milliseconds.rounded())
     }
 
-    /// Provider exposes machine `hostName`, not the ping target. Default matches SettingsStore.
-    private static let pingHost = "1.1.1.1"
 }
 
 private enum KindChip: Int, CaseIterable {
