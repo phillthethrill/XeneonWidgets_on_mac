@@ -79,13 +79,13 @@ struct MemBox: View {
     private var disksMeta: some View {
         let count = disks.volumeCount
         if compact {
-            Text("\(count) volumes")
+            Text("\(count) volume\(count == 1 ? "" : "s")")
                 .font(Typography.mono(14))
                 .monoDigits()
                 .foregroundStyle(theme.text3)
         } else {
             HStack(spacing: 0) {
-                Text("\(count) volumes · ")
+                Text("\(count) volume\(count == 1 ? "" : "s") · ")
                 Text("R")
                     .foregroundStyle(theme.accent)
                 Text(" ")
