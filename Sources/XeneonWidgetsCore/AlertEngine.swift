@@ -99,16 +99,29 @@ public struct AlertEngine: Sendable {
             )
         }
 
+        var diskNameTotals: [String: Int] = [:]
+        for disk in inputs.disks {
+            diskNameTotals[disk.name, default: 0] += 1
+        }
+        var diskNameSeen: [String: Int] = [:]
         for disk in inputs.disks where disk.percent >= rules.diskPercent {
             let name = disk.name
+            let ordinal = diskNameSeen[name, default: 0] + 1
+            diskNameSeen[name] = ordinal
+            let id: String
+            if diskNameTotals[name] == 1 {
+                id = "disk:\(name)"
+            } else {
+                id = "disk:\(name)#\(ordinal)"
+            }
             let percent = Int(disk.percent.rounded())
             next.append(
                 Alert(
-                    id: "disk:\(name)",
+                    id: id,
                     level: .warn,
                     text: "\(name) · \(percent)% full",
                     box: .mem,
-                    since: active["disk:\(name)"]?.since ?? inputs.now
+                    since: active[id]?.since ?? inputs.now
                 )
             )
         }
@@ -147,7 +160,7 @@ public struct AlertEngine: Sendable {
             }
             return lhs.since < rhs.since
         }
-        active = Dictionary(uniqueKeysWithValues: next.map { ($0.id, $0) })
+        active = Dictionary(next.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
         return next
     }
 
