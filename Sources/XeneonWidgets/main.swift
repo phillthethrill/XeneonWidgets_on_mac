@@ -10,7 +10,8 @@ enum AppLaunch {
 
     /// Developer hook: `XENEON_PREVIEW_PRESET=<rawValue>` (overview|focusCPU|focusProcesses|ambient).
     static var previewPreset: Preset? {
-        guard let raw = ProcessInfo.processInfo.environment["XENEON_PREVIEW_PRESET"],
+        guard isPreview,
+              let raw = ProcessInfo.processInfo.environment["XENEON_PREVIEW_PRESET"],
               !raw.isEmpty else { return nil }
         return Preset(rawValue: raw)
     }

@@ -19,13 +19,8 @@ struct GPUBox: View {
                     .frame(height: 80)
                 KVRow(key: "gpu memory", value: memoryLabel(gpu))
                 KVRow(key: "source", value: gpu.source, valueColor: theme.text3)
-                Spacer(minLength: 0)
-            } else {
-                Text("unavailable")
-                    .font(Typography.small)
-                    .foregroundStyle(theme.text3)
-                Spacer(minLength: 0)
             }
+            Spacer(minLength: 0)
         }
     }
 
@@ -60,13 +55,8 @@ struct BatteryBox: View {
                     value: battery.cycleCount.map { "\($0)" } ?? "—"
                 )
                 KVRow(key: "status", value: battery.isCharging ? "charging" : "discharging")
-                Spacer(minLength: 0)
-            } else {
-                Text("unavailable")
-                    .font(Typography.small)
-                    .foregroundStyle(theme.text3)
-                Spacer(minLength: 0)
             }
+            Spacer(minLength: 0)
         }
     }
 }

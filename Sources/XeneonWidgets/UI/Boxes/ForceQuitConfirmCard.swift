@@ -31,7 +31,7 @@ struct ForceQuitConfirmCard: View {
 
     private var bodyText: String {
         if isForceQuit {
-            return "Running containers will stop and unsaved state is lost. This cannot be undone."
+            return "This cannot be undone. Unsaved state in \(processName) will be lost."
         }
         return "The process is asked to quit and may save its state first."
     }

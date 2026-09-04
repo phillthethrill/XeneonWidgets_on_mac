@@ -41,7 +41,7 @@ struct ProcBox: View {
     }
 
     private var valueLabel: String {
-        wide ? "\(rowLimit) · \(sort.rawValue) ↓" : "top 7 · cpu ↓"
+        wide ? "\(rowLimit) · \(sort.rawValue) ↓" : "top \(rowLimit) · \(sort.rawValue) ↓"
     }
 
     var body: some View {
@@ -72,7 +72,8 @@ struct ProcBox: View {
                             selected: wide && state.selectedPID == sample.pid,
                             height: rowHeight,
                             fontSize: rowFont,
-                            onTap: { select(sample) }
+                            onTap: { select(sample) },
+                            onLongPress: cycleSort
                         )
                     }
                 }
@@ -99,6 +100,16 @@ struct ProcBox: View {
     private func select(_ sample: ProcessSample) {
         state.selectedPID = sample.pid
         processes.watchedPID = sample.pid
+        if !wide {
+            state.preset = .focusProcesses
+        }
+        state.noteActivity()
+    }
+
+    private func cycleSort() {
+        let all = ProcSort.allCases
+        guard let index = all.firstIndex(of: sort) else { return }
+        sort = all[(index + 1) % all.count]
         state.noteActivity()
     }
 
@@ -114,8 +125,8 @@ struct ProcBox: View {
             threads: String(sample.threads),
             mem: ProcessMath.memLabel(sample.residentBytes),
             cpu: sample.cpuPercent,
-            memHistory: detail?.memHistory.elements ?? [],
-            cpuHistory: detail?.cpuHistory.elements ?? []
+            memHistory: GraphWindow.samples(detail?.memHistory.elements ?? [], sampleCount: 60, width: 80),
+            cpuHistory: GraphWindow.samples(detail?.cpuHistory.elements ?? [], sampleCount: 60, width: 80)
         )
     }
 }

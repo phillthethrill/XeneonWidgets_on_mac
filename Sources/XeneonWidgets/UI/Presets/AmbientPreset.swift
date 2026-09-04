@@ -74,21 +74,33 @@ struct AmbientPreset: View {
         VStack(alignment: .leading, spacing: 28) {
             ambientRow(
                 label: "cpu",
-                values: cpu.totalHistory.elements,
+                values: GraphWindow.samples(
+                    cpu.totalHistory,
+                    sampleCount: state.timeRange(for: .cpu).sampleCount(at: state.sampling),
+                    width: 420
+                ),
                 color: theme.stateColor(cpu.total, .cpu),
                 value: Formatters.percent(cpu.total),
                 max: 100
             )
             ambientRow(
                 label: "mem",
-                values: memory.usedHistory.elements,
+                values: GraphWindow.samples(
+                    memory.usedHistory,
+                    sampleCount: state.timeRange(for: .mem).sampleCount(at: state.sampling),
+                    width: 420
+                ),
                 color: theme.stateColor(memory.breakdown.usedPercent, .memory),
                 value: Formatters.percent(memory.breakdown.usedPercent),
                 max: 100
             )
             ambientRow(
                 label: "net ↓",
-                values: network.downHistory.elements,
+                values: GraphWindow.samples(
+                    network.downHistory,
+                    sampleCount: state.timeRange(for: .net).sampleCount(at: state.sampling),
+                    width: 420
+                ),
                 color: theme.accent,
                 value: "\(Formatters.megabytesPerSecond(network.downRate)) MB/s",
                 max: nil

@@ -35,16 +35,27 @@ struct ProcRow: View {
     let height: CGFloat
     let fontSize: CGFloat
     let onTap: () -> Void
+    let onLongPress: (() -> Void)?
 
     @Environment(\.theme) private var theme
+    @State private var longPressGate = ProcLongPressGate()
 
-    init(model: Model, wide: Bool, selected: Bool, height: CGFloat, fontSize: CGFloat, onTap: @escaping () -> Void) {
+    init(
+        model: Model,
+        wide: Bool,
+        selected: Bool,
+        height: CGFloat,
+        fontSize: CGFloat,
+        onTap: @escaping () -> Void,
+        onLongPress: (() -> Void)? = nil
+    ) {
         self.model = model
         self.wide = wide
         self.selected = selected
         self.height = height
         self.fontSize = fontSize
         self.onTap = onTap
+        self.onLongPress = onLongPress
     }
 
     var body: some View {
@@ -70,7 +81,18 @@ struct ProcRow: View {
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: 12))
-        .onTapGesture(perform: onTap)
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.6)
+                .onEnded { _ in
+                    guard let onLongPress else { return }
+                    longPressGate.mark()
+                    onLongPress()
+                }
+        )
+        .onTapGesture {
+            if longPressGate.consume() { return }
+            onTap()
+        }
     }
 
     private var cpuColor: Color {
@@ -168,5 +190,20 @@ struct ProcRow: View {
             .monoDigits()
             .foregroundStyle(cpuColor)
             .lineLimit(1)
+    }
+}
+
+/// Synchronous flag so a recognised long-press can suppress `onTap` on lift.
+private final class ProcLongPressGate {
+    private var flagged = false
+
+    func mark() {
+        flagged = true
+    }
+
+    func consume() -> Bool {
+        guard flagged else { return false }
+        flagged = false
+        return true
     }
 }
