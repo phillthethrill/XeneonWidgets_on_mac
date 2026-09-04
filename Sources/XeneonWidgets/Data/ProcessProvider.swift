@@ -30,7 +30,13 @@ final class ProcessProvider: ObservableObject, SampledProvider {
             _watchedPID = newValue
             stateLock.unlock()
             if changed {
-                detail = nil
+                if Thread.isMainThread {
+                    detail = nil
+                } else {
+                    DispatchQueue.main.async { [weak self] in
+                        self?.detail = nil
+                    }
+                }
             }
         }
     }
@@ -38,10 +44,11 @@ final class ProcessProvider: ObservableObject, SampledProvider {
     private let stateLock = NSLock()
     private var _watchedPID: pid_t?
     private var iconCache: [pid_t: NSImage] = [:]
+    private var runningAppPIDs: Set<pid_t> = []
+    private var runningAppNames: [pid_t: String] = [:]
 
     private var lastSample: Date?
-    private var previousWall: Date?
-    private var previousCPUNanoseconds: [pid_t: UInt64] = [:]
+    private var previousCPU: [pid_t: PreviousCPU] = [:]
     private var userCache: [uid_t: String] = [:]
     private var lastWatchedPID: pid_t?
     private var detailCPU = RingBuffer<Double>(capacity: 60)
@@ -53,7 +60,15 @@ final class ProcessProvider: ObservableObject, SampledProvider {
         return info
     }()
 
-    init() {}
+    init() {
+        if Thread.isMainThread {
+            refreshRunningApps()
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.refreshRunningApps()
+            }
+        }
+    }
 
     func sample(at now: Date, interval: SamplingInterval) {
         let minGap = max(interval.rawValue, 1.0)
@@ -62,11 +77,18 @@ final class ProcessProvider: ObservableObject, SampledProvider {
         }
         lastSample = now
 
+        scheduleRunningAppRefresh()
+
+        stateLock.lock()
+        let appPIDs = runningAppPIDs
+        let appNames = runningAppNames
+        stateLock.unlock()
+
         let pids = listPIDs()
         var samples: [ProcessSample] = []
         samples.reserveCapacity(pids.count)
         var threads = 0
-        var nextCPU: [pid_t: UInt64] = [:]
+        var nextCPU: [pid_t: PreviousCPU] = [:]
         nextCPU.reserveCapacity(pids.count)
 
         let watched = watchedPID
@@ -76,17 +98,22 @@ final class ProcessProvider: ObservableObject, SampledProvider {
             lastWatchedPID = watched
         }
 
-        let wallNanos = previousWall.map { UInt64(max(0, now.timeIntervalSince($0)) * 1_000_000_000.0) }
+        let wallNow = DispatchTime.now().uptimeNanoseconds
 
         for pid in pids {
-            guard let snapshot = readProcess(pid: pid, watched: watched, wallNanos: wallNanos) else { continue }
-            nextCPU[pid] = snapshot.cpuNanoseconds
+            guard let snapshot = readProcess(
+                pid: pid,
+                watched: watched,
+                wallNow: wallNow,
+                appPIDs: appPIDs,
+                appNames: appNames
+            ) else { continue }
+            nextCPU[pid] = snapshot.previous
             threads += snapshot.sample.threads
             samples.append(snapshot.sample)
         }
 
-        previousCPUNanoseconds = nextCPU
-        previousWall = now
+        previousCPU = nextCPU
 
         var publishedDetail: ProcessDetail?
         if let watched, let match = samples.first(where: { $0.pid == watched }) {
@@ -147,12 +174,24 @@ final class ProcessProvider: ObservableObject, SampledProvider {
         kill(pid, SIGKILL) == 0
     }
 
-    private struct Snapshot {
-        var sample: ProcessSample
-        var cpuNanoseconds: UInt64
+    private struct PreviousCPU {
+        var startTime: UInt64
+        var totalTicks: UInt64
+        var wallTime: UInt64
     }
 
-    private func readProcess(pid: pid_t, watched: pid_t?, wallNanos: UInt64?) -> Snapshot? {
+    private struct Snapshot {
+        var sample: ProcessSample
+        var previous: PreviousCPU
+    }
+
+    private func readProcess(
+        pid: pid_t,
+        watched: pid_t?,
+        wallNow: UInt64,
+        appPIDs: Set<pid_t>,
+        appNames: [pid_t: String]
+    ) -> Snapshot? {
         var task = proc_taskinfo()
         let taskSize = Int32(MemoryLayout<proc_taskinfo>.size)
         let taskGot = withUnsafeMutablePointer(to: &task) { ptr in
@@ -169,15 +208,16 @@ final class ProcessProvider: ObservableObject, SampledProvider {
 
         let cpuTicks = task.pti_total_user &+ task.pti_total_system
         let cpuNanos = machTicksToNanoseconds(cpuTicks)
+        let startTimeTicks = bsd.pbi_start_tvsec
         var cpu = 0.0
-        if let wallNanos, wallNanos > 0, let previous = previousCPUNanoseconds[pid] {
-            let deltaCPU = cpuNanos >= previous ? cpuNanos - previous : 0
-            cpu = ProcessMath.cpuPercent(deltaCPUNanoseconds: deltaCPU, deltaWallNanoseconds: wallNanos)
+        if let previous = previousCPU[pid], previous.startTime == startTimeTicks, wallNow > previous.wallTime {
+            let deltaCPU = cpuNanos >= previous.totalTicks ? cpuNanos - previous.totalTicks : 0
+            let deltaWall = wallNow - previous.wallTime
+            cpu = ProcessMath.cpuPercent(deltaCPUNanoseconds: deltaCPU, deltaWallNanoseconds: deltaWall)
         }
 
         let path = processPath(pid: pid)
-        let running = NSRunningApplication(processIdentifier: pid)
-        let isApp = path.contains(".app/") || running != nil
+        let isApp = appPIDs.contains(pid) || path.contains(".app/")
         let uid = bsd.pbi_uid
         let isSystem =
             uid == 0
@@ -196,7 +236,7 @@ final class ProcessProvider: ObservableObject, SampledProvider {
 
         let openFiles = watched == pid ? openFileCount(for: pid) : nil
         let name: String
-        if let localized = running?.localizedName, !localized.isEmpty {
+        if let localized = appNames[pid], !localized.isEmpty {
             name = localized
         } else if !path.isEmpty {
             name = URL(fileURLWithPath: path).lastPathComponent
@@ -220,19 +260,24 @@ final class ProcessProvider: ObservableObject, SampledProvider {
             isApp: isApp,
             isSystem: isSystem
         )
-        return Snapshot(sample: sample, cpuNanoseconds: cpuNanos)
+        return Snapshot(
+            sample: sample,
+            previous: PreviousCPU(startTime: startTimeTicks, totalTicks: cpuNanos, wallTime: wallNow)
+        )
     }
 
     private func listPIDs() -> [pid_t] {
         let bytes = proc_listpids(UInt32(PROC_ALL_PIDS), 0, nil, 0)
         guard bytes > 0 else { return [] }
-        let capacity = Int(bytes) / MemoryLayout<pid_t>.size
+        let hinted = Int(bytes) / MemoryLayout<pid_t>.size
+        let capacity = hinted * 2 + 64
         var pids = [pid_t](repeating: 0, count: capacity)
+        let bufferBytes = Int32(clamping: capacity * MemoryLayout<pid_t>.size)
         let filled = pids.withUnsafeMutableBufferPointer { buf in
-            proc_listpids(UInt32(PROC_ALL_PIDS), 0, buf.baseAddress, bytes)
+            proc_listpids(UInt32(PROC_ALL_PIDS), 0, buf.baseAddress, bufferBytes)
         }
         guard filled > 0 else { return [] }
-        let count = Int(filled) / MemoryLayout<pid_t>.size
+        let count = min(Int(filled), Int(bufferBytes)) / MemoryLayout<pid_t>.size
         return pids.prefix(count).filter { $0 > 0 }
     }
 
@@ -250,12 +295,13 @@ final class ProcessProvider: ObservableObject, SampledProvider {
         if needed == 0 { return 0 }
         let fdSize = MemoryLayout<proc_fdinfo>.size
         guard fdSize > 0 else { return nil }
-        var fds = [proc_fdinfo](repeating: proc_fdinfo(), count: Int(needed) / fdSize)
+        let capacity = Int(needed) / fdSize
+        var fds = [proc_fdinfo](repeating: proc_fdinfo(), count: capacity)
         let got = fds.withUnsafeMutableBufferPointer { buf in
             proc_pidinfo(pid, PROC_PIDLISTFDS, 0, buf.baseAddress, needed)
         }
         guard got >= 0 else { return nil }
-        return Int(got) / fdSize
+        return min(Int(got) / fdSize, capacity)
     }
 
     private func username(for uid: uid_t) -> String {
@@ -274,7 +320,33 @@ final class ProcessProvider: ObservableObject, SampledProvider {
         let numer = UInt64(timebase.numer)
         let denom = UInt64(timebase.denom)
         guard denom > 0 else { return ticks }
-        return ticks &* numer / denom
+        let product = ticks.multipliedFullWidth(by: numer)
+        return denom.dividingFullWidth(product).quotient
+    }
+
+    private func scheduleRunningAppRefresh() {
+        DispatchQueue.main.async { [weak self] in
+            self?.refreshRunningApps()
+        }
+    }
+
+    private func refreshRunningApps() {
+        let apps = NSWorkspace.shared.runningApplications
+        var pids = Set<pid_t>()
+        var names: [pid_t: String] = [:]
+        pids.reserveCapacity(apps.count)
+        names.reserveCapacity(apps.count)
+        for app in apps {
+            let pid = app.processIdentifier
+            pids.insert(pid)
+            if let localized = app.localizedName, !localized.isEmpty {
+                names[pid] = localized
+            }
+        }
+        stateLock.lock()
+        runningAppPIDs = pids
+        runningAppNames = names
+        stateLock.unlock()
     }
 
     private func cString<T>(_ tuple: T) -> String {
