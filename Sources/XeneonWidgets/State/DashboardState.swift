@@ -43,6 +43,11 @@ final class DashboardState: ObservableObject {
         set { settings.idleMinutes = newValue }
     }
 
+    var glanceEnabled: Bool {
+        get { settings.glanceEnabled }
+        set { settings.glanceEnabled = newValue }
+    }
+
     init(settings: SettingsStore, layoutStore: LayoutStore) {
         self.settings = settings
         self.layoutStore = layoutStore

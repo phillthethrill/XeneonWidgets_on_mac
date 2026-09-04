@@ -49,19 +49,20 @@ final class GlanceController: ObservableObject {
         driftTimer = nil
         glanceCancellable?.cancel()
         glanceCancellable = nil
+        driftOffset = .zero
     }
 
     private func tick() {
         let cpuNow = cpu.total
         if state.glance {
-            if ActivitySpike.detected(cpuNow: cpuNow, cpuThen: cpuTenSecondsAgo, downRate: network.downRate) {
+            if !state.glanceEnabled
+                || ActivitySpike.detected(cpuNow: cpuNow, cpuThen: cpuTenSecondsAgo, downRate: network.downRate) {
                 exitGlance()
             }
         } else {
-            let idleMinutes = state.idleMinutes
-            if idleMinutes > 0 {
+            if state.glanceEnabled && state.idleMinutes > 0 {
                 let idle = Date().timeIntervalSince(state.lastActivity)
-                if idle >= Double(idleMinutes) * 60 {
+                if idle >= Double(state.idleMinutes) * 60 {
                     enterGlance()
                 }
             }
@@ -92,9 +93,10 @@ final class GlanceController: ObservableObject {
     }
 
     private func restorePresetIfNeeded() {
-        guard let previousPreset else { return }
-        state.preset = previousPreset
-        self.previousPreset = nil
+        if state.preset == .ambient, let previousPreset {
+            state.preset = previousPreset
+        }
+        previousPreset = nil
     }
 
     private func startDrift() {

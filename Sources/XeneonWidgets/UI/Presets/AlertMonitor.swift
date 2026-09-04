@@ -32,6 +32,7 @@ final class AlertMonitor: ObservableObject {
     }
 
     func start() {
+        stop()
         cancellable = Publishers.Merge4(
             cpu.objectWillChange,
             memory.objectWillChange,
@@ -50,6 +51,7 @@ final class AlertMonitor: ObservableObject {
         cancellable = nil
         highlightClearWork?.cancel()
         highlightClearWork = nil
+        highlightedBox = nil
     }
 
     func handleChipTap(_ alert: XeneonWidgetsCore.Alert) {
