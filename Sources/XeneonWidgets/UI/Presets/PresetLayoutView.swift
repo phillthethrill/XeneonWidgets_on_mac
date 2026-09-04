@@ -33,7 +33,7 @@ struct PresetLayoutView<Overlay: View>: View {
 
     var body: some View {
         let spec = state.layouts[preset] ?? LayoutSpec.default(for: preset)
-        VStack(spacing: 16) {
+        VStack(spacing: Metrics.boxGap) {
             HeaderBar(
                 clock: env.clock,
                 power: env.power,
@@ -41,10 +41,10 @@ struct PresetLayoutView<Overlay: View>: View {
                 onAlertTap: { _ in state.noteActivity() },
                 showPageDots: showPageDots
             )
-            .frame(height: 56)
+            .frame(height: Metrics.headerHeight)
 
             ZStack(alignment: .trailing) {
-                HStack(spacing: 16) {
+                HStack(spacing: Metrics.boxGap) {
                     ForEach(Array(spec.visible.enumerated()), id: \.element.id) { index, placement in
                         editableBox(placement: placement, index: index, spec: spec)
                     }
@@ -53,7 +53,7 @@ struct PresetLayoutView<Overlay: View>: View {
             }
             .frame(width: Metrics.contentWidth, height: Metrics.bodyHeight)
         }
-        .padding(24)
+        .padding(Metrics.outerPadding)
         .frame(width: Metrics.screenWidth, height: Metrics.screenHeight)
         .onChange(of: state.editMode) { editing in
             if !editing {
