@@ -49,6 +49,13 @@ func runDiskMathTests() {
         DiskMath.rates(current: current, previous: previous, interval: -1),
         "rates nil when interval is negative"
     )
+    let reset = DiskIOSample(readBytes: 100, writeBytes: 1_000_000)
+    if let resetRates = DiskMath.rates(current: reset, previous: previous, interval: 2) {
+        expectClose(resetRates.read, 0, "read rate is 0 after counter reset")
+        expectClose(resetRates.write, 250_000, "write rate still uses a forward delta")
+    } else {
+        expect(false, "rates should exist after a one-sided counter reset")
+    }
 
     let gb = UInt64(1_073_741_824)
     expectEqual(
