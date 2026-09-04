@@ -66,9 +66,9 @@ public enum DiskMath {
         interval: TimeInterval
     ) -> (read: Double, write: Double)? {
         guard interval > 0 else { return nil }
-        let read = Double(current.readBytes &- previous.readBytes) / interval
-        let write = Double(current.writeBytes &- previous.writeBytes) / interval
-        return (read, write)
+        let readDelta = current.readBytes < previous.readBytes ? 0 : current.readBytes - previous.readBytes
+        let writeDelta = current.writeBytes < previous.writeBytes ? 0 : current.writeBytes - previous.writeBytes
+        return (Double(readDelta) / interval, Double(writeDelta) / interval)
     }
 
     public static func capacityLabel(used: UInt64, total: UInt64) -> String {

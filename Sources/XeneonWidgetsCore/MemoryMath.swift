@@ -56,6 +56,16 @@ public enum MemoryMath {
         pairLabel(usedBytes: usedBytes, totalBytes: totalBytes)
     }
 
+    /// `kern.memorystatus_vm_pressure_level`: 1 normal, 2 warning, 4 critical. Unknown → nil (keep last).
+    public static func pressureLevel(fromSysctl value: Int32) -> MemoryPressureLevel? {
+        switch value {
+        case 1: return .normal
+        case 2: return .warning
+        case 4: return .critical
+        default: return nil
+        }
+    }
+
     private static func pairLabel(usedBytes: UInt64, totalBytes: UInt64) -> String {
         let usedGB = Double(usedBytes) / 1_073_741_824.0
         let totalGB = Double(totalBytes) / 1_073_741_824.0

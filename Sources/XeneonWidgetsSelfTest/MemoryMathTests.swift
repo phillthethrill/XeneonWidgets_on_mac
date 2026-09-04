@@ -49,4 +49,10 @@ func runMemoryMathTests() {
         "19.2 / 36 GB",
         "memValueLabel matches the overview hero"
     )
+
+    expectEqual(MemoryMath.pressureLevel(fromSysctl: 1), .normal, "sysctl 1 is normal")
+    expectEqual(MemoryMath.pressureLevel(fromSysctl: 2), .warning, "sysctl 2 is warning")
+    expectEqual(MemoryMath.pressureLevel(fromSysctl: 4), .critical, "sysctl 4 is critical")
+    expectNil(MemoryMath.pressureLevel(fromSysctl: 0), "unknown sysctl keeps last (nil)")
+    expectNil(MemoryMath.pressureLevel(fromSysctl: 3), "unmapped sysctl keeps last (nil)")
 }
