@@ -29,6 +29,9 @@ final class MemoryProvider: ObservableObject, SampledProvider {
             total: ProcessInfo.processInfo.physicalMemory
         )
         self.usedHistory = RingBuffer(capacity: capacity)
+        if let level = Self.readPressureLevel() {
+            self.pressure = level
+        }
         startPressureMonitor()
     }
 
@@ -40,11 +43,15 @@ final class MemoryProvider: ObservableObject, SampledProvider {
     func sample(at _: Date, interval _: SamplingInterval) {
         let snapshot = Self.readBreakdown()
         let swap = Self.readSwap()
+        let seeded = Self.readPressureLevel()
         DispatchQueue.main.async {
             self.breakdown = snapshot
             self.swapUsed = swap.used
             self.swapTotal = swap.total
             self.usedHistory.append(snapshot.usedPercent)
+            if let seeded {
+                self.pressure = seeded
+            }
         }
     }
 
@@ -103,6 +110,14 @@ final class MemoryProvider: ObservableObject, SampledProvider {
             pageSize: UInt64(vm_kernel_page_size),
             totalBytes: total
         )
+    }
+
+    private static func readPressureLevel() -> MemoryPressureLevel? {
+        var level: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        let result = sysctlbyname("kern.memorystatus_vm_pressure_level", &level, &size, nil, 0)
+        guard result == 0 else { return nil }
+        return MemoryMath.pressureLevel(fromSysctl: level)
     }
 
     private static func readSwap() -> (used: UInt64, total: UInt64) {
