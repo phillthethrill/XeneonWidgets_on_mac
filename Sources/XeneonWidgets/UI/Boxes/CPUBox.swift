@@ -54,8 +54,10 @@ struct CPUBox: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .contentShape(Rectangle())
                             .onTapGesture(perform: closeRangePicker)
-                        TimeRangePopover(selected: timeRange, onSelect: selectRange)
-                            .frame(width: graphW, height: graphH)
+                        ZStack(alignment: .center) {
+                            TimeRangePopover(selected: timeRange, onSelect: selectRange)
+                        }
+                        .frame(width: graphW, height: graphH)
                     }
                 }
             }
@@ -92,9 +94,6 @@ struct CPUBox: View {
             StatePill(label: "Thermal", value: cpu.thermal.label, level: cpu.thermal.stateLevel)
             VStack(alignment: .leading, spacing: 4) {
                 KVRow(key: "load 1 · 5 · 15", value: loadLabel)
-                if cpu.perCoreFrequencyAvailable {
-                    KVRow(key: "freq", value: "n/a · Apple Silicon", valueColor: theme.text3)
-                }
             }
         }
     }
@@ -213,11 +212,7 @@ struct CPUBox: View {
     }
 
     private func windowed(_ buffer: RingBuffer<Double>, width: CGFloat) -> [Double] {
-        let range = timeRange
-        let sampleCount = range.sampleCount(at: state.sampling)
-        let values = buffer.suffix(sampleCount)
-        let padded = GraphMath.padLeading(values, to: sampleCount)
-        return GraphMath.bucket(padded, into: max(2, Int(width / 3)))
+        GraphWindow.samples(buffer, sampleCount: timeRange.sampleCount(at: state.sampling), width: width)
     }
 
     private func values(at indices: [Int]) -> [Double] {
