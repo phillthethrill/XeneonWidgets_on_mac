@@ -6,6 +6,7 @@ struct ProcBox: View {
     @ObservedObject var state: DashboardState
     let wide: Bool
     var onHeaderTap: (() -> Void)?
+    let glow: Color?
 
     @State private var sort: ProcSort = .cpu
     @State private var filter: ProcFilter = .all
@@ -16,11 +17,13 @@ struct ProcBox: View {
         processes: ProcessProvider,
         state: DashboardState,
         wide: Bool,
+        glow: Color? = nil,
         onHeaderTap: (() -> Void)? = nil
     ) {
         self.processes = processes
         self.state = state
         self.wide = wide
+        self.glow = glow
         self.onHeaderTap = onHeaderTap
     }
 
@@ -46,6 +49,7 @@ struct ProcBox: View {
             title: "proc",
             meta: "\(processes.processCount) processes · \(processes.threadCount) threads",
             value: valueLabel,
+            glow: glow,
             gap: 12
         ) {
             VStack(alignment: .leading, spacing: 12) {

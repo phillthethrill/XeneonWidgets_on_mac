@@ -39,13 +39,15 @@ struct GPUBox: View {
 
 struct BatteryBox: View {
     @ObservedObject var power: PowerProvider
+    var glow: Color?
     @Environment(\.theme) private var theme
 
     var body: some View {
         let battery = power.battery
         BoxContainer(
             title: "battery",
-            value: battery.map { Formatters.percent($0.percent) }
+            value: battery.map { Formatters.percent($0.percent) },
+            glow: glow
         ) {
             if let battery {
                 BatteryPill(

@@ -6,11 +6,13 @@ struct FocusProcessesPreset: View {
 
     @ObservedObject private var state: DashboardState
     @ObservedObject private var processes: ProcessProvider
+    @ObservedObject private var alertMonitor: AlertMonitor
 
     init(env: DashboardEnvironment) {
         self.env = env
         self._state = ObservedObject(wrappedValue: env.state)
         self._processes = ObservedObject(wrappedValue: env.processes)
+        self._alertMonitor = ObservedObject(wrappedValue: env.alertMonitor)
     }
 
     var body: some View {
@@ -46,20 +48,30 @@ struct FocusProcessesPreset: View {
     private func box(for placement: BoxPlacement) -> some View {
         switch placement.id {
         case .proc:
-            ProcBox(processes: processes, state: state, wide: true)
+            ProcBox(processes: processes, state: state, wide: true, glow: glow(for: .proc))
         case .cpu:
-            CPUBox(cpu: env.cpu, state: state, mode: .overview, uptime: env.clock.uptime)
+            CPUBox(cpu: env.cpu, state: state, mode: .overview, uptime: env.clock.uptime, glow: glow(for: .cpu))
         case .mem:
-            MemBox(memory: env.memory, disks: env.disks, compact: false)
+            MemBox(memory: env.memory, disks: env.disks, compact: false, glow: glow(for: .mem))
         case .net:
-            NetBox(network: env.network, compact: false)
+            NetBox(network: env.network, compact: false, glow: glow(for: .net))
         case .gpu:
             GPUBox(cpu: env.cpu)
         case .battery:
-            BatteryBox(power: env.power)
+            BatteryBox(power: env.power, glow: glow(for: .battery))
         case .clock:
             ClockBox(clock: env.clock)
         }
+    }
+
+    private func glow(for box: BoxID) -> Color? {
+        AlertHighlight.glow(
+            for: box,
+            alerts: state.alerts,
+            theme: state.theme,
+            highlighted: alertMonitor.highlightedBox,
+            pulseOpacity: alertMonitor.highlightOpacity
+        )
     }
 
     private var selectedProcess: ProcessSample? {

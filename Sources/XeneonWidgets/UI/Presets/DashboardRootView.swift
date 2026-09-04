@@ -50,6 +50,8 @@ struct DashboardRootView: View {
         .environment(\.pageDotsVisible, showPageDots)
         .simultaneousGesture(swipeGesture)
         .simultaneousGesture(activityGesture)
+        .glanceEffect(env)
+        .environmentObject(env.alertMonitor)
     }
 
     private var pagerOffset: CGFloat {

@@ -4,17 +4,19 @@ import XeneonWidgetsCore
 struct NetBox: View {
     @ObservedObject var network: NetworkProvider
     var compact: Bool
+    var glow: Color?
 
     @Environment(\.theme) private var theme
     @State private var showInterfacePopover = false
 
-    init(network: NetworkProvider, compact: Bool) {
+    init(network: NetworkProvider, compact: Bool, glow: Color? = nil) {
         self.network = network
         self.compact = compact
+        self.glow = glow
     }
 
     var body: some View {
-        BoxContainer(title: "net", meta: network.metaLabel, value: network.valueLabel) {
+        BoxContainer(title: "net", meta: network.metaLabel, value: network.valueLabel, glow: glow) {
             ZStack(alignment: .topLeading) {
                 if showInterfacePopover {
                     Color.clear

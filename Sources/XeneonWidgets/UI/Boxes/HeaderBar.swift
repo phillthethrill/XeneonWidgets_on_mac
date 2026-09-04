@@ -9,6 +9,7 @@ struct HeaderBar: View {
     let showPageDots: Bool
 
     @Environment(\.theme) private var theme
+    @EnvironmentObject private var alertMonitor: AlertMonitor
 
     init(
         clock: ClockProvider,
@@ -85,7 +86,10 @@ struct HeaderBar: View {
                             text: alert.text,
                             age: Formatters.age(clock.now.timeIntervalSince(alert.since)),
                             level: alert.level,
-                            action: { onAlertTap(alert) }
+                            action: {
+                                onAlertTap(alert)
+                                alertMonitor.handleChipTap(alert)
+                            }
                         )
                     }
                     if extra > 0 {

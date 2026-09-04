@@ -15,6 +15,8 @@ final class DashboardEnvironment {
     let processes: ProcessProvider
     let power: PowerProvider
     let clock: ClockProvider
+    let alertMonitor: AlertMonitor
+    let glance: GlanceController
 
     private var cancellables = Set<AnyCancellable>()
     private var didApplyPreviewPID = false
@@ -39,6 +41,14 @@ final class DashboardEnvironment {
         self.processes = ProcessProvider()
         self.power = PowerProvider()
         self.clock = ClockProvider()
+        self.alertMonitor = AlertMonitor(
+            state: state,
+            cpu: cpu,
+            memory: memory,
+            disks: disks,
+            power: power
+        )
+        self.glance = GlanceController(state: state, cpu: cpu, network: network)
 
         sampler.add(cpu)
         sampler.add(memory)
@@ -57,6 +67,10 @@ final class DashboardEnvironment {
 
         if let preview = AppLaunch.previewPreset {
             state.preset = preview
+        }
+
+        if AppLaunch.previewAlerts {
+            Self.injectPreviewAlerts(into: state)
         }
 
         if AppLaunch.previewSelectPID != nil {
@@ -89,11 +103,35 @@ final class DashboardEnvironment {
     func start() {
         sampler.start()
         clock.start()
+        alertMonitor.start()
+        glance.start()
     }
 
     func stop() {
+        glance.stop()
+        alertMonitor.stop()
         sampler.stop()
         clock.stop()
+    }
+
+    private static func injectPreviewAlerts(into state: DashboardState) {
+        let now = Date()
+        state.alerts = [
+            Alert(
+                id: "memory",
+                level: .crit,
+                text: "Pressure critical",
+                box: .mem,
+                since: now.addingTimeInterval(-134)
+            ),
+            Alert(
+                id: "disk:Macintosh HD",
+                level: .warn,
+                text: "Macintosh HD 95%",
+                box: .mem,
+                since: now.addingTimeInterval(-31)
+            ),
+        ]
     }
 
     func setSampling(_ interval: SamplingInterval) {
