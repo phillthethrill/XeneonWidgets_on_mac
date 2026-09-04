@@ -1,10 +1,18 @@
 import AppKit
 import Foundation
+import XeneonWidgetsCore
 
 enum AppLaunch {
     static var isPreview: Bool {
         CommandLine.arguments.contains("--preview")
             || ProcessInfo.processInfo.environment["XENEON_PREVIEW"] == "1"
+    }
+
+    /// Developer hook: `XENEON_PREVIEW_PRESET=<rawValue>` (overview|focusCPU|focusProcesses|ambient).
+    static var previewPreset: Preset? {
+        guard let raw = ProcessInfo.processInfo.environment["XENEON_PREVIEW_PRESET"],
+              !raw.isEmpty else { return nil }
+        return Preset(rawValue: raw)
     }
 }
 

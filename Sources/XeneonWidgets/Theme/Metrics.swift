@@ -9,7 +9,7 @@ enum Metrics {
     static let innerGap: CGFloat = 16
     static let procInnerGap: CGFloat = 12
     static let headerHeight: CGFloat = 56
-    static let bodyHeight: CGFloat = 608
+    static let bodyHeight: CGFloat = screenHeight - 2 * outerPadding - headerHeight - boxGap
     static let contentWidth: CGFloat = 2512
     static let boxRadius: CGFloat = 20
     static let popoverRadius: CGFloat = 18

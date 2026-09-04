@@ -53,6 +53,10 @@ final class DashboardEnvironment {
                 settings.networkSelection = selection.rawValue
             }
             .store(in: &cancellables)
+
+        if let preview = AppLaunch.previewPreset {
+            state.preset = preview
+        }
     }
 
     func start() {

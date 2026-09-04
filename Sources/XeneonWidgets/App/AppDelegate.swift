@@ -21,7 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         isVisible = UserDefaults.standard.object(forKey: Self.dashboardVisibleKey) as? Bool ?? true
         if AppLaunch.isPreview {
-            env.state.preset = .overview
+            env.state.preset = AppLaunch.previewPreset ?? .overview
         }
         setupStatusItem()
         env.start()

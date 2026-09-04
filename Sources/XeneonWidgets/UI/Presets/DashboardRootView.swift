@@ -39,9 +39,10 @@ struct DashboardRootView: View {
                 AmbientPreset(env: env)
                     .frame(width: Metrics.screenWidth, height: Metrics.screenHeight)
             }
+            .frame(width: Metrics.screenWidth, height: Metrics.screenHeight, alignment: .leading)
             .offset(x: pagerOffset)
         }
-        .frame(width: Metrics.screenWidth, height: Metrics.screenHeight)
+        .frame(width: Metrics.screenWidth, height: Metrics.screenHeight, alignment: .topLeading)
         .clipped()
         .contentShape(Rectangle())
         .environment(\.theme, state.theme)
