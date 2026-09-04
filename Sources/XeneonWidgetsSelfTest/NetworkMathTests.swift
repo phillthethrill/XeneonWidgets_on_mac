@@ -86,6 +86,28 @@ private func runRatesTests() {
         expectClose(rates.down, 500, "down bytes/s")
         expectClose(rates.up, 200, "up bytes/s")
     }
+
+    let wrap = NetworkMath.rates(
+        current: InterfaceCounters(inBytes: 0x1000, outBytes: 0x1000),
+        previous: InterfaceCounters(inBytes: 0xFFFF0000, outBytes: 0xFFFF0000),
+        interval: 1
+    )
+    expectNotNil(wrap, "32-bit wrap still produces a rate")
+    if let wrap {
+        expectClose(wrap.down, Double(0x11000), "32-bit wrap down delta")
+        expectClose(wrap.up, Double(0x11000), "32-bit wrap up delta")
+    }
+
+    let reset = NetworkMath.rates(
+        current: InterfaceCounters(inBytes: 100, outBytes: 100),
+        previous: InterfaceCounters(inBytes: UInt64(UInt32.max) + 50, outBytes: UInt64(UInt32.max) + 50),
+        interval: 1
+    )
+    expectNotNil(reset, "64-bit backwards jump still returns a rate")
+    if let reset {
+        expectClose(reset.down, 0, "64-bit backwards jump is not a 32-bit wrap")
+        expectClose(reset.up, 0, "64-bit backwards jump up is 0")
+    }
 }
 
 private func runKindTests() {
@@ -122,6 +144,7 @@ private func runKindTests() {
     expectEqual(InterfaceKind.wifi.rawValue, "Wi-Fi", "wifi label")
     expectEqual(InterfaceKind.ethernet.rawValue, "Ethernet", "ethernet label")
     expectEqual(InterfaceKind.usb.rawValue, "USB", "usb label")
+    expectEqual(InterfaceKind.other.rawValue, "Other", "other label")
 }
 
 private func runRateScaleLabelTests() {
