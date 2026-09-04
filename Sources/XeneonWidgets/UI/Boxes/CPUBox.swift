@@ -115,13 +115,18 @@ struct CPUBox: View {
     }
 
     private var overviewCores: some View {
-        HStack(alignment: .top, spacing: 24) {
-            CoreBars(title: "\(cpu.performanceCoreIndices.count) P-cores", values: values(at: cpu.performanceCoreIndices))
+        let pCount = cpu.performanceCoreIndices.count
+        let pTitle = cpu.efficiencyCoreIndices.isEmpty
+            ? "\(pCount) cores"
+            : "\(pCount) P-cores"
+        return HStack(alignment: .top, spacing: 24) {
+            CoreBars(title: pTitle, values: values(at: cpu.performanceCoreIndices))
             if !cpu.efficiencyCoreIndices.isEmpty {
                 Hairline(vertical: true)
                 CoreBars(title: "\(cpu.efficiencyCoreIndices.count) E-cores", values: values(at: cpu.efficiencyCoreIndices))
             }
         }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func focusCoreGrid(innerWidth: CGFloat) -> some View {
