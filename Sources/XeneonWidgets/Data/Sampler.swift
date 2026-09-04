@@ -9,14 +9,20 @@ protocol SampledProvider: AnyObject {
 }
 
 final class Sampler {
-    let queue = DispatchQueue(label: "com.local.xeneon.sampler", qos: .utility)
-    private(set) var interval: SamplingInterval
+    private static let queueKey = DispatchSpecificKey<Bool>()
 
+    let queue = DispatchQueue(label: "com.local.xeneon.sampler", qos: .utility)
+    private var storedInterval: SamplingInterval
     private var providers: [SampledProvider] = []
     private var timer: DispatchSourceTimer?
 
+    var interval: SamplingInterval {
+        syncOnQueue { storedInterval }
+    }
+
     init(interval: SamplingInterval) {
-        self.interval = interval
+        storedInterval = interval
+        queue.setSpecific(key: Self.queueKey, value: true)
     }
 
     deinit {
@@ -24,7 +30,7 @@ final class Sampler {
     }
 
     func add(_ provider: SampledProvider) {
-        providers.append(provider)
+        syncOnQueue { providers.append(provider) }
     }
 
     func start() {
@@ -38,11 +44,10 @@ final class Sampler {
     }
 
     func setInterval(_ interval: SamplingInterval) {
-        self.interval = interval
-        let capacity = interval.historyCapacity
-        let snapshot = providers
-        queue.async {
-            for provider in snapshot {
+        syncOnQueue {
+            storedInterval = interval
+            let capacity = interval.historyCapacity
+            for provider in providers {
                 provider.historyCapacityChanged(to: capacity)
             }
         }
@@ -53,17 +58,25 @@ final class Sampler {
     }
 
     private func scheduleTimer() {
+        let repeating = syncOnQueue { storedInterval.rawValue }
         let source = DispatchSource.makeTimerSource(queue: queue)
-        source.schedule(deadline: .now(), repeating: interval.rawValue, leeway: .milliseconds(50))
+        source.schedule(deadline: .now(), repeating: repeating, leeway: .milliseconds(50))
         source.setEventHandler { [weak self] in
             guard let self else { return }
             let now = Date()
-            let current = self.interval
+            let current = self.storedInterval
             for provider in self.providers {
                 provider.sample(at: now, interval: current)
             }
         }
         source.resume()
         timer = source
+    }
+
+    private func syncOnQueue<T>(_ work: () -> T) -> T {
+        if DispatchQueue.getSpecific(key: Self.queueKey) != nil {
+            return work()
+        }
+        return queue.sync(execute: work)
     }
 }
