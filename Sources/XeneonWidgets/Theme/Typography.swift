@@ -9,7 +9,7 @@ enum Typography {
         .system(size: size, weight: weight, design: .default)
     }
 
-    static let display = mono(300, .ultraLight)
+    static let display = mono(300, .thin)
     static let clock = mono(44, .semibold)
     static let clockSeconds = mono(44, .regular)
     static let big = mono(72, .semibold)
