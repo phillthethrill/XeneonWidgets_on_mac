@@ -20,6 +20,12 @@ enum AppLaunch {
         isPreview && ProcessInfo.processInfo.environment["XENEON_PREVIEW_EDIT"] == "1"
     }
 
+    /// Developer hook: `XENEON_PREVIEW_ALERTS=1` (preview path only).
+    /// Injects synthetic header chips and skips the monitor overwrite.
+    static var previewAlerts: Bool {
+        isPreview && ProcessInfo.processInfo.environment["XENEON_PREVIEW_ALERTS"] == "1"
+    }
+
     /// Developer hook: `XENEON_PREVIEW_SELECT_PID=<pid>` or `first`.
     /// Applied after the first matching process sample arrives (preview path only).
     static var previewSelectPID: String? {

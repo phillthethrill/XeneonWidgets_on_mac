@@ -10,15 +10,17 @@ struct CPUBox: View {
     @ObservedObject var state: DashboardState
     let mode: CPUBoxMode
     let uptime: TimeInterval
+    let glow: Color?
 
     @Environment(\.theme) private var theme
     @State private var showRangePicker = false
 
-    init(cpu: CPUProvider, state: DashboardState, mode: CPUBoxMode, uptime: TimeInterval) {
+    init(cpu: CPUProvider, state: DashboardState, mode: CPUBoxMode, uptime: TimeInterval, glow: Color? = nil) {
         self.cpu = cpu
         self.state = state
         self.mode = mode
         self.uptime = uptime
+        self.glow = glow
     }
 
     var body: some View {
@@ -27,7 +29,8 @@ struct CPUBox: View {
             title: "cpu",
             meta: "\(cpu.cpuModel) · \(cpu.coreConfigLabel) · \(Formatters.uptime(uptime))",
             value: Formatters.percent(cpu.total),
-            valueColor: totalColor
+            valueColor: totalColor,
+            glow: glow
         ) {
             GeometryReader { geo in
                 let innerW = geo.size.width
