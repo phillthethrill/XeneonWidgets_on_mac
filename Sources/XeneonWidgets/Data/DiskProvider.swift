@@ -111,9 +111,6 @@ final class DiskProvider: ObservableObject, SampledProvider {
                 return match
             }
         }
-        if probe.isInternal {
-            return stats.internalFallback
-        }
         return nil
     }
 
@@ -208,17 +205,15 @@ final class DiskProvider: ObservableObject, SampledProvider {
 
     private struct DriverStats {
         var byBSD: [String: DiskIOSample]
-        var internalFallback: DiskIOSample?
     }
 
     private static func collectDriverStats() -> DriverStats {
         var byBSD: [String: DiskIOSample] = [:]
-        var fallback: DiskIOSample?
 
         var iterator: io_iterator_t = 0
         let matching = IOServiceMatching("IOBlockStorageDriver")
         guard IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iterator) == KERN_SUCCESS else {
-            return DriverStats(byBSD: byBSD, internalFallback: fallback)
+            return DriverStats(byBSD: byBSD)
         }
         defer { _ = IOObjectRelease(iterator) }
 
@@ -235,11 +230,8 @@ final class DiskProvider: ObservableObject, SampledProvider {
                     byBSD[whole] = sample
                 }
             }
-            if fallback == nil, sample.readBytes > 0 || sample.writeBytes > 0 {
-                fallback = sample
-            }
         }
-        return DriverStats(byBSD: byBSD, internalFallback: fallback)
+        return DriverStats(byBSD: byBSD)
     }
 
     private static func statistics(for service: io_object_t) -> DiskIOSample? {
