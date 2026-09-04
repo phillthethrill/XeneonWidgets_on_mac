@@ -16,7 +16,7 @@ public enum Formatters {
 
     public static func capacity(_ bytes: UInt64) -> String {
         let gb = Double(bytes) / 1_073_741_824.0
-        if gb < 1000 {
+        if gb < 1024 {
             return "\(Int(gb.rounded())) GB"
         }
         return String(format: "%.2f TB", gb / 1024.0)
