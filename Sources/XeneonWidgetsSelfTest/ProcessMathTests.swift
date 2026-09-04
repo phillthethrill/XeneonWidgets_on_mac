@@ -133,6 +133,32 @@ private func runMemLabelTests() {
 private func runSampleIdentityTests() {
     let proc = sample(pid: 2210, uid: 501, cpu: 31.6, mem: 4_209_068_749, isApp: true, isSystem: false, name: "Docker")
     expectEqual(proc.id, 2210, "Identifiable id is pid")
+
+    let t0 = Date(timeIntervalSince1970: 1_700_000_000)
+    let t1 = Date(timeIntervalSince1970: 1_700_000_100)
+    let live = sample(pid: 42, uid: 501, cpu: 1, isApp: false, isSystem: false, name: "reuse", startTime: t1)
+    expect(
+        !ProcessMath.identityMatches(samples: [live], pid: 42, startTime: t0),
+        "same pid, different startTime is not the same process"
+    )
+    expect(
+        ProcessMath.identityMatches(samples: [live], pid: 42, startTime: t1),
+        "same pid and startTime matches"
+    )
+
+    let unknown = sample(pid: 7, uid: 501, cpu: 1, isApp: false, isSystem: false, name: "anon", startTime: nil)
+    expect(
+        ProcessMath.identityMatches(samples: [unknown], pid: 7, startTime: nil),
+        "nil/nil startTime matches: identity is pid-only when start time is unknown"
+    )
+    expect(
+        !ProcessMath.identityMatches(samples: [live], pid: 7, startTime: t1),
+        "missing pid does not match"
+    )
+    expect(
+        !ProcessMath.identityMatches(samples: [unknown], pid: 7, startTime: t0),
+        "nil sample startTime does not match a concrete startTime"
+    )
 }
 
 private func sample(
@@ -143,7 +169,8 @@ private func sample(
     mem: UInt64 = 0,
     isApp: Bool,
     isSystem: Bool,
-    name: String
+    name: String,
+    startTime: Date? = nil
 ) -> ProcessSample {
     ProcessSample(
         pid: pid,
@@ -156,7 +183,7 @@ private func sample(
         residentBytes: mem,
         threads: 4,
         openFiles: nil,
-        startTime: nil,
+        startTime: startTime,
         isApp: isApp,
         isSystem: isSystem
     )
