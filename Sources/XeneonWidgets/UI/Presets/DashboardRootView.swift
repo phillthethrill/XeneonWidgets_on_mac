@@ -21,6 +21,7 @@ struct DashboardRootView: View {
     @State private var didNoteActivity = false
     @State private var dotsHideWork: DispatchWorkItem?
     @State private var swipeIsHorizontal: Bool?
+    @State private var swipeBeganInGlance = false
 
     init(env: DashboardEnvironment) {
         self.env = env
@@ -31,14 +32,10 @@ struct DashboardRootView: View {
         ZStack(alignment: .topLeading) {
             state.theme.bg
             HStack(spacing: 0) {
-                OverviewPreset(env: env)
-                    .frame(width: Metrics.screenWidth, height: Metrics.screenHeight)
-                FocusCPUPreset(env: env)
-                    .frame(width: Metrics.screenWidth, height: Metrics.screenHeight)
-                FocusProcessesPreset(env: env)
-                    .frame(width: Metrics.screenWidth, height: Metrics.screenHeight)
-                AmbientPreset(env: env)
-                    .frame(width: Metrics.screenWidth, height: Metrics.screenHeight)
+                presetPage(.overview) { OverviewPreset(env: env) }
+                presetPage(.focusCPU) { FocusCPUPreset(env: env) }
+                presetPage(.focusProcesses) { FocusProcessesPreset(env: env) }
+                presetPage(.ambient) { AmbientPreset(env: env) }
             }
             .frame(width: Metrics.screenWidth, height: Metrics.screenHeight, alignment: .leading)
             .offset(x: pagerOffset)
@@ -67,6 +64,10 @@ struct DashboardRootView: View {
                 if swipeIsHorizontal == nil {
                     swipeIsHorizontal = abs(value.translation.height) <= abs(value.translation.width)
                 }
+                if swipeBeganInGlance {
+                    dragOffset = 0
+                    return
+                }
                 guard swipeIsHorizontal == true else {
                     dragOffset = 0
                     return
@@ -77,11 +78,18 @@ struct DashboardRootView: View {
                 guard !state.editMode else {
                     dragOffset = 0
                     swipeIsHorizontal = nil
+                    swipeBeganInGlance = false
                     return
                 }
                 finishActivity()
+                let glanceOnly = swipeBeganInGlance
+                swipeBeganInGlance = false
                 let horizontal = swipeIsHorizontal ?? (abs(value.translation.height) <= abs(value.translation.width))
                 swipeIsHorizontal = nil
+                if glanceOnly {
+                    withAnimation(Motion.presetSwipe) { dragOffset = 0 }
+                    return
+                }
                 guard horizontal else {
                     withAnimation(Motion.presetSwipe) { dragOffset = 0 }
                     return
@@ -137,9 +145,22 @@ struct DashboardRootView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
     }
 
+    @ViewBuilder
+    private func presetPage<Content: View>(_ preset: Preset, @ViewBuilder content: () -> Content) -> some View {
+        Group {
+            if abs(preset.index - state.preset.index) <= 1 {
+                content()
+            } else {
+                Color.clear
+            }
+        }
+        .frame(width: Metrics.screenWidth, height: Metrics.screenHeight)
+    }
+
     private func noteActivityOnce() {
         guard !didNoteActivity else { return }
         didNoteActivity = true
+        swipeBeganInGlance = state.glance
         state.noteActivity()
     }
 
