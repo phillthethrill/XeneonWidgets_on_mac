@@ -28,11 +28,10 @@ final class ClockProvider: ObservableObject {
     }
 
     deinit {
-        let clock = clockTimer
-        let events = eventTimer
-        DispatchQueue.main.async {
-            clock?.invalidate()
-            events?.invalidate()
+        if Thread.isMainThread {
+            stopOnMain()
+        } else {
+            stop()
         }
     }
 
@@ -50,8 +49,13 @@ final class ClockProvider: ObservableObject {
         if Thread.isMainThread {
             stopOnMain()
         } else {
-            DispatchQueue.main.async { [weak self] in
-                self?.stopOnMain()
+            let clock = clockTimer
+            let events = eventTimer
+            clockTimer = nil
+            eventTimer = nil
+            DispatchQueue.main.async {
+                clock?.invalidate()
+                events?.invalidate()
             }
         }
     }
