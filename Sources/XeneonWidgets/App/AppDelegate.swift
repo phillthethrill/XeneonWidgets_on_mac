@@ -1,20 +1,34 @@
 import AppKit
 import SwiftUI
+import XeneonWidgetsCore
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let dashboardVisibleKey = "dashboardVisible"
 
     private var statusItem: NSStatusItem?
     private var widgetWindow: WidgetWindow?
     private var isVisible = true
+    private var isPreviewWindow = false
     private var toggleItem: NSMenuItem?
-    private let statsProvider = SystemStatsProvider()
+    private let env = DashboardEnvironment()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
+        if AppLaunch.isPreview {
+            NSApp.setActivationPolicy(.regular)
+        } else {
+            NSApp.setActivationPolicy(.accessory)
+        }
         isVisible = UserDefaults.standard.object(forKey: Self.dashboardVisibleKey) as? Bool ?? true
+        if AppLaunch.isPreview {
+            env.state.preset = AppLaunch.previewPreset ?? .overview
+            if AppLaunch.previewEdit {
+                env.state.editMode = true
+            }
+        }
         setupStatusItem()
-        statsProvider.startPolling()
+        env.start()
+        syncDisplayConnected()
         openWindowIfNeeded()
         NotificationCenter.default.addObserver(
             self,
@@ -25,7 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        statsProvider.stopPolling()
+        env.stop()
         NotificationCenter.default.removeObserver(self)
         widgetWindow?.close()
         widgetWindow = nil
@@ -54,12 +68,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(statusMenuItem)
 
         menu.addItem(NSMenuItem.separator())
+
+        let presetItem = NSMenuItem(title: "Preset", action: nil, keyEquivalent: "")
+        presetItem.submenu = makePresetMenu()
+        menu.addItem(presetItem)
+
+        let samplingItem = NSMenuItem(title: "Sampling", action: nil, keyEquivalent: "")
+        samplingItem.submenu = makeSamplingMenu()
+        menu.addItem(samplingItem)
+
+        menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(
             title: "Quit XeneonWidgets",
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q"
         ))
         statusItem?.menu = menu
+    }
+
+    private func makePresetMenu() -> NSMenu {
+        let menu = NSMenu(title: "Preset")
+        for (index, preset) in Preset.allCases.enumerated() {
+            let item = NSMenuItem(
+                title: preset.title,
+                action: #selector(selectPreset(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.tag = 200 + index
+            item.representedObject = preset.rawValue
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    private func makeSamplingMenu() -> NSMenu {
+        let menu = NSMenu(title: "Sampling")
+        for (index, interval) in SamplingInterval.allCases.enumerated() {
+            let item = NSMenuItem(
+                title: interval.menuLabel,
+                action: #selector(selectSampling(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.tag = 300 + index
+            item.representedObject = interval.rawValue
+            menu.addItem(item)
+        }
+        return menu
     }
 
     private func updateStatusIcon() {
@@ -94,17 +150,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateStatusIcon()
     }
 
-    private func openWindowIfNeeded() {
-        guard let screen = DisplayManager.xeneonScreen else { return }
+    @objc private func selectPreset(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String,
+              let preset = Preset(rawValue: raw) else { return }
+        env.state.preset = preset
+        env.state.noteActivity()
+    }
 
-        if widgetWindow == nil {
-            let content = WidgetContainerView(stats: statsProvider)
-            widgetWindow = WidgetWindow(screen: screen, contentView: content)
+    @objc private func selectSampling(_ sender: NSMenuItem) {
+        let intervals = SamplingInterval.allCases
+        let index = sender.tag - 300
+        guard intervals.indices.contains(index) else { return }
+        env.setSampling(intervals[index])
+    }
+
+    private func openWindowIfNeeded() {
+        // --preview / XENEON_PREVIEW=1 always opens the scaled main-screen
+        // window so development screenshots work even when a Xeneon is plugged in.
+        if AppLaunch.isPreview, let screen = NSScreen.main ?? NSScreen.screens.first {
+            openPreviewWindow(on: screen)
+            return
+        }
+
+        if let screen = DisplayManager.xeneonScreen {
+            openXeneonWindow(on: screen)
+        }
+    }
+
+    private func openXeneonWindow(on screen: NSScreen) {
+        if widgetWindow == nil || isPreviewWindow {
+            widgetWindow?.close()
+            widgetWindow = WidgetWindow(screen: screen, contentView: DashboardRootView(env: env))
+            isPreviewWindow = false
         } else {
             syncWindowFrame(to: screen)
         }
-
         applyVisibilityPreference()
+    }
+
+    private func openPreviewWindow(on screen: NSScreen) {
+        if widgetWindow == nil || !isPreviewWindow {
+            widgetWindow?.close()
+            widgetWindow = WidgetWindow(previewOn: screen, contentView: PreviewScaledRoot(env: env))
+            isPreviewWindow = true
+        }
+        applyVisibilityPreference()
+        NSApp.activate(ignoringOtherApps: true)
+        widgetWindow?.makeKeyAndOrderFront(nil)
+        widgetWindow?.orderFrontRegardless()
     }
 
     private func applyVisibilityPreference() {
@@ -124,17 +217,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func syncDisplayConnected() {
+        env.state.isDisplayConnected = DisplayManager.xeneonScreen != nil
+    }
+
     @objc private func screensChanged() {
-        if let screen = DisplayManager.xeneonScreen {
-            if widgetWindow == nil {
-                openWindowIfNeeded()
-            } else {
-                syncWindowFrame(to: screen)
-                applyVisibilityPreference()
-            }
+        syncDisplayConnected()
+        if AppLaunch.isPreview, let screen = NSScreen.main ?? NSScreen.screens.first {
+            openPreviewWindow(on: screen)
+        } else if let screen = DisplayManager.xeneonScreen {
+            openXeneonWindow(on: screen)
         } else {
             widgetWindow?.close()
             widgetWindow = nil
+            isPreviewWindow = false
         }
 
         if let menu = statusItem?.menu,
@@ -148,6 +244,20 @@ extension AppDelegate: NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         if let item = menu.item(withTag: 100) {
             item.title = xeneonStatusTitle
+        }
+        updateRadioMenus(menu)
+    }
+
+    private func updateRadioMenus(_ menu: NSMenu) {
+        if let presetMenu = menu.item(withTitle: "Preset")?.submenu {
+            for (index, preset) in Preset.allCases.enumerated() {
+                presetMenu.item(withTag: 200 + index)?.state = env.state.preset == preset ? .on : .off
+            }
+        }
+        if let samplingMenu = menu.item(withTitle: "Sampling")?.submenu {
+            for (index, interval) in SamplingInterval.allCases.enumerated() {
+                samplingMenu.item(withTag: 300 + index)?.state = env.state.sampling == interval ? .on : .off
+            }
         }
     }
 }

@@ -15,6 +15,12 @@ let package = Package(
             path: "Sources/XeneonWidgets",
             resources: [
                 .process("Resources/XeneonWidgets.icns"),
+            ],
+            linkerSettings: [
+                .linkedFramework("IOKit"),
+                .linkedFramework("CoreWLAN"),
+                .linkedFramework("SystemConfiguration"),
+                .linkedFramework("EventKit"),
             ]
         ),
         .executableTarget(

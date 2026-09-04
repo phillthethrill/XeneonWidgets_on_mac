@@ -23,5 +23,9 @@
     <string>XeneonWidgets</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>Shows your next calendar event in the ambient dashboard.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Shows your next calendar event in the ambient dashboard.</string>
 </dict>
 </plist>
