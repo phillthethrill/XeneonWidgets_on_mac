@@ -1,6 +1,8 @@
 # btop Dashboard Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Status (2026-09-05):** Tasks 1–17 and the post-implementation review list are on `btop-dashboard`. `fix-a-core-providers` and `fix-b-ui` are merged. GPU memory is used-only when the registry has no total. Body height in code is **600** (`720 − 2·24 − 56 − 16`); the **608** figure below is a stale JSX comment — do not “fix” code back to 608.
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. New work should follow `IMPLEMENTATION_PROMPT.md`, not re-run Waves A–F.
 
 **Goal:** Replace the four-card XeneonWidgets dashboard with the btop-class system monitor specified in the design handoff (Row 1 presets + Row 2 states/interactions, OLED Black theme), rendered natively in SwiftUI on the Corsair Xeneon Edge (2560 × 720, touch).
 
@@ -944,4 +946,22 @@ DashboardRootView: `.opacity(state.glance ? 0.6 : 1)` + `.offset(driftOffset)` a
 
 **Files:** Modify `README.md`, `build.sh` (no functional change unless the bundle needs `NSCalendarsFullAccessUsageDescription` copied — it already copies `Resources/Info.plist`).
 
-- [ ] README: replace Features/Project structure/Technical notes with the new dashboard (presets, gestures, alerts, edit mode, sampling, preview mode `swift run XeneonWidgets --preview`, data sources table from FEATURES §12, fallbacks §13, design docs location `docs/design/handoff-btop/`). Keep Install/Run/Login sections. Commit `docs: describe btop dashboard`.
+- [x] README: replace Features/Project structure/Technical notes with the new dashboard (presets, gestures, alerts, edit mode, sampling, preview mode `swift run XeneonWidgets --preview`, data sources table from FEATURES §12, fallbacks §13, design docs location `docs/design/handoff-btop/`). Keep Install/Run/Login sections. Commit `docs: describe btop dashboard`.
+
+---
+
+## Post-implementation review (2026-09-04)
+
+Full-branch review of merged HEAD `3bf1ab2` (76 commits vs `main`). Plan tasks 1–17 are done. The review list in `IMPLEMENTATION_PROMPT.md` is implemented (P0–P2 + nits except deferred glance flash).
+
+**P0 (must fix before considering this shippable):**
+1. `NSCalendarsUsageDescription` missing — EventKit `requestAccess(to:)` on macOS 13 aborts the process.
+2. Terminate / Force Quit is PID-only `kill` — PID reuse during hold-to-confirm can signal the wrong process; also does not refuse `getpid()`.
+
+**P1 (should fix):** Overview row tap does not open the detail sheet; proc footer lies about long-press sort; compact sort label is hardcoded; Force Quit body is the Docker sample; time-range popover not centred; net chips not equal-width; `LayoutSpec.normalize()` can scale a box below `minBoxWidth`.
+
+**P2 / cost:** all four presets stay mounted; Ambient/proc graphs skip `GraphMath.bucket`; process tick still refreshes `NSWorkspace` every sample; disk I/O first-busy-driver fallback; GPU total = `physicalMemory`; Auto net label names one iface; detail rings are 60 samples not 60 s; ping footer hardcoded `1.1.1.1`; `ClockProvider.deinit` async invalidate; `AlertEngine` `uniqueKeysWithValues` trap; leftover `StatsMath.networkRates` wrap; glance-exit swipe can skip a page; `XENEON_PREVIEW_PRESET` not gated on `--preview`.
+
+**Won't fix:** Files tile (not Ports); Free legend swatch 0.35; body height 608 in this document (code is 600).
+
+**Landed:** `fix-a-core-providers` and `fix-b-ui` merged; GPU used-only label and process-detail graph bucketing applied on this branch.
