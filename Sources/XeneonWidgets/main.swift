@@ -14,6 +14,15 @@ enum AppLaunch {
               !raw.isEmpty else { return nil }
         return Preset(rawValue: raw)
     }
+
+    /// Developer hook: `XENEON_PREVIEW_SELECT_PID=<pid>` or `first`.
+    /// Applied after the first matching process sample arrives (preview path only).
+    static var previewSelectPID: String? {
+        guard isPreview,
+              let raw = ProcessInfo.processInfo.environment["XENEON_PREVIEW_SELECT_PID"],
+              !raw.isEmpty else { return nil }
+        return raw
+    }
 }
 
 let delegate = MainActor.assumeIsolated { AppDelegate() }

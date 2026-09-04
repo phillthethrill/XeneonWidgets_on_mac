@@ -20,6 +20,7 @@ struct DashboardRootView: View {
     @State private var showPageDots = false
     @State private var didNoteActivity = false
     @State private var dotsHideWork: DispatchWorkItem?
+    @State private var swipeIsHorizontal: Bool?
 
     init(env: DashboardEnvironment) {
         self.env = env
@@ -47,7 +48,7 @@ struct DashboardRootView: View {
         .contentShape(Rectangle())
         .environment(\.theme, state.theme)
         .environment(\.pageDotsVisible, showPageDots)
-        .gesture(swipeGesture)
+        .simultaneousGesture(swipeGesture)
         .simultaneousGesture(activityGesture)
     }
 
@@ -59,10 +60,23 @@ struct DashboardRootView: View {
         DragGesture(minimumDistance: 40)
             .onChanged { value in
                 noteActivityOnce()
+                if swipeIsHorizontal == nil {
+                    swipeIsHorizontal = abs(value.translation.height) <= abs(value.translation.width)
+                }
+                guard swipeIsHorizontal == true else {
+                    dragOffset = 0
+                    return
+                }
                 dragOffset = clampedDrag(value.translation.width)
             }
             .onEnded { value in
                 finishActivity()
+                let horizontal = swipeIsHorizontal ?? (abs(value.translation.height) <= abs(value.translation.width))
+                swipeIsHorizontal = nil
+                guard horizontal else {
+                    withAnimation(Motion.presetSwipe) { dragOffset = 0 }
+                    return
+                }
                 settleSwipe(translation: value.translation.width, predicted: value.predictedEndTranslation.width)
             }
     }

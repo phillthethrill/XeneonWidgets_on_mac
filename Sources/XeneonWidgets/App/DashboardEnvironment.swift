@@ -17,6 +17,7 @@ final class DashboardEnvironment {
     let clock: ClockProvider
 
     private var cancellables = Set<AnyCancellable>()
+    private var didApplyPreviewPID = false
 
     init() {
         let settings = SettingsStore()
@@ -57,6 +58,32 @@ final class DashboardEnvironment {
         if let preview = AppLaunch.previewPreset {
             state.preset = preview
         }
+
+        if AppLaunch.previewSelectPID != nil {
+            processes.$processes
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] samples in
+                    self?.applyPreviewSelectedPID(samples)
+                }
+                .store(in: &cancellables)
+        }
+    }
+
+    private func applyPreviewSelectedPID(_ samples: [ProcessSample]) {
+        guard !didApplyPreviewPID, !samples.isEmpty,
+              let spec = AppLaunch.previewSelectPID else { return }
+        let match: ProcessSample?
+        if spec == "first" {
+            match = samples.first
+        } else if let pid = pid_t(spec) {
+            match = samples.first(where: { $0.pid == pid })
+        } else {
+            match = nil
+        }
+        guard let match else { return }
+        didApplyPreviewPID = true
+        state.selectedPID = match.pid
+        processes.watchedPID = match.pid
     }
 
     func start() {

@@ -1,10 +1,11 @@
 import SwiftUI
 import XeneonWidgetsCore
 
-struct PresetLayoutView: View {
+struct PresetLayoutView<Overlay: View>: View {
     let env: DashboardEnvironment
     let preset: Preset
     let box: (BoxPlacement) -> AnyView
+    let bodyOverlay: Overlay
 
     @ObservedObject private var state: DashboardState
     @Environment(\.pageDotsVisible) private var showPageDots
@@ -12,11 +13,13 @@ struct PresetLayoutView: View {
     init(
         env: DashboardEnvironment,
         preset: Preset,
-        @ViewBuilder box: @escaping (BoxPlacement) -> AnyView
+        @ViewBuilder box: @escaping (BoxPlacement) -> AnyView,
+        @ViewBuilder bodyOverlay: () -> Overlay
     ) {
         self.env = env
         self.preset = preset
         self.box = box
+        self.bodyOverlay = bodyOverlay()
         self._state = ObservedObject(wrappedValue: env.state)
     }
 
@@ -32,14 +35,28 @@ struct PresetLayoutView: View {
             )
             .frame(height: 56)
 
-            HStack(spacing: 16) {
-                ForEach(spec.visible, id: \.id) { placement in
-                    box(placement)
-                        .frame(width: placement.width, height: Metrics.bodyHeight)
+            ZStack(alignment: .trailing) {
+                HStack(spacing: 16) {
+                    ForEach(spec.visible, id: \.id) { placement in
+                        box(placement)
+                            .frame(width: placement.width, height: Metrics.bodyHeight)
+                    }
                 }
+                bodyOverlay
             }
+            .frame(width: Metrics.contentWidth, height: Metrics.bodyHeight)
         }
         .padding(24)
         .frame(width: Metrics.screenWidth, height: Metrics.screenHeight)
+    }
+}
+
+extension PresetLayoutView where Overlay == EmptyView {
+    init(
+        env: DashboardEnvironment,
+        preset: Preset,
+        @ViewBuilder box: @escaping (BoxPlacement) -> AnyView
+    ) {
+        self.init(env: env, preset: preset, box: box, bodyOverlay: { EmptyView() })
     }
 }
